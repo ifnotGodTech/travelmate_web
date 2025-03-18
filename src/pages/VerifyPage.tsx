@@ -69,7 +69,7 @@ export default function VerifyEmail() {
             >
                 
             <div className="flex items-center justify-center w-full">
-                {isLoading ? <Spinner size="24px" borderWidth="4px" color="white" /> : "Continue"}
+                {isLoading ? <Spinner size="24px" borderWidth="8px" color="white" /> : "Continue"}
             </div>
         </button>
 

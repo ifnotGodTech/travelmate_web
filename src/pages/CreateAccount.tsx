@@ -88,7 +88,7 @@ export default function CreateAccount() {
 
           {/* Spinner */}
           <div className="fixed inset-0 flex items-center justify-center z-50">
-            <Spinner size="50px" borderWidth="8px" color="white" />
+            <Spinner size="50px" />
           </div>
         </>
       )}

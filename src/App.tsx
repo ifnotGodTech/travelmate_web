@@ -6,12 +6,14 @@ import Home from "./pages/Home";
 import CreatePassword from "./pages/CreatePassword";
 import EmailResetLink from "./pages/EmailResetLink";
 import ResetPassword from "./pages/ResetPassword";
+import Login from "./pages/Login";
 
 
 function App() {
   return (
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/verify-page" element={<VerifyPage />} />
         <Route path="/create-password" element={<CreatePassword />} />

@@ -1,13 +1,25 @@
 import { useState } from "react";
-import { MdOutlineEmail } from "react-icons/md"
+import { MdOutlineEmail } from "react-icons/md";
 import AuthNav from "../components/AuthNavbar";
+import Spinner from "../components/Spinner"; // Ensure you have this Spinner component
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleResetLink = (e: React.FormEvent) => {
+  const handleResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Reset link sent to:", email);
+    setLoading(true);
+
+    try {
+      // Simulate an API request
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Reset link sent to:", email);
+    } catch (error) {
+      console.error("Error sending reset link:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,9 +53,12 @@ export default function ResetPassword() {
 
             <button
               type="submit"
-              className="bg-[#0450A2] text-white font-semibold py-2 rounded-lg w-full mt-4 hover:bg-[#023E8A] transition"
+              disabled={loading}
+              className={`flex items-center justify-center bg-[#023E8A] text-white font-semibold py-2 rounded-lg w-full mt-4 transition ${
+                loading ? "opacity-90 cursor-not-allowed" : "hover:bg-[#0450A2]"  
+              }`}
             >
-              Send Reset Link
+              {loading ? <Spinner size="24px" /> : "Send Reset Link"}
             </button>
           </form>
 

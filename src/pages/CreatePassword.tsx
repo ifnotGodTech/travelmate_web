@@ -1,7 +1,9 @@
 import { useState } from "react";
 import AuthNavbar from "../components/AuthNavbar";
 import Spinner from "../components/Spinner";
-import { FaCheck, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaCheck, FaTimes } from "react-icons/fa";
+import { RiEyeLine, RiEyeOffLine } from "react-icons/ri";
+import { MdLockOutline } from "react-icons/md";
 
 export default function CreatePassword() {
   const [password, setPassword] = useState("");
@@ -9,7 +11,6 @@ export default function CreatePassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Validation Checks
   const requirements = [
     { label: "At Least 8 Characters", check: password.length >= 8 },
     { label: "One Uppercase Letter (A-Z)", check: /[A-Z]/.test(password) },
@@ -49,20 +50,29 @@ export default function CreatePassword() {
           {/* Password Input */}
           <div className="relative">
             <label className="block text-gray-700 font-medium mb-1">Password</label>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-10 text-gray-500"
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
+            <div className="relative">
+              {/* Lock Icon */}
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xl">
+                <MdLockOutline />
+              </span>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => {
+                    if (e.target.value.length <= 20) setPassword(e.target.value);
+                  }}
+                className="w-full border border-gray-300 rounded-lg pl-10 pr-12 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter Password"
+              />
+              {/* Eye Toggle Icon */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? <RiEyeOffLine /> : <RiEyeLine />}
+              </button>
+            </div>
           </div>
 
           {/* Validation Checklist */}
@@ -72,10 +82,12 @@ export default function CreatePassword() {
               <li key={index} className="flex items-center gap-2 text-sm text-gray-700 mt-2">
                 <span
                   className={`w-5 h-5 flex items-center justify-center rounded-full border ${
-                    req.check ? "bg-blue-500 border-blue-500 text-white" : "bg-gray-200 border-gray-300"
+                    req.check
+                      ? "bg-blue-500 border-blue-500 text-white"
+                      : "bg-red-500 border-red-500 text-white"
                   }`}
                 >
-                  {req.check && <FaCheck size={12} />}
+                  {req.check ? <FaCheck size={12} /> : <FaTimes size={12} />}
                 </span>
                 {req.label}
               </li>
@@ -90,8 +102,8 @@ export default function CreatePassword() {
               allValid ? "bg-[#023E8A] hover:bg-[#0450A2]" : "bg-gray-400 cursor-not-allowed"
             }`}
           >
-            {loading && <Spinner size="25px"/>}
-            Create Password
+            {allValid ? "Continue" : "Create Password"}
+            {loading && <Spinner size="25px" />}
           </button>
         </form>
 
