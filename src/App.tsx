@@ -13,7 +13,7 @@ import StaysSearchResults from "./pages/StaysSearchResults";
 function App() {
   return (
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/verify-page" element={<VerifyPage />} />
