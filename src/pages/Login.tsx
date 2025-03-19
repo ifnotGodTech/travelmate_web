@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MdLockOutline, MdOutlineEmail } from "react-icons/md";
-import { RiLockPasswordLine, RiEyeLine, RiEyeCloseLine, RiEyeOffLine } from "react-icons/ri";
+import { RiEyeLine, RiEyeOffLine } from "react-icons/ri";
 import AuthNav from "../components/AuthNavbar";
 
 export default function Login() {

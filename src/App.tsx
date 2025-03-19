@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import './App.css'
 import CreateAccount from "./pages/CreateAccount";
 import VerifyPage from "./pages/VerifyPage";
-import Home from "./pages/2Home";
+import Home from "./pages/Home";
 import CreatePassword from "./pages/CreatePassword";
 import EmailResetLink from "./pages/EmailResetLink";
 import ResetPassword from "./pages/ResetPassword";
