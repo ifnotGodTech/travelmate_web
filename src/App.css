@@ -1,12 +1,8 @@
 #root {
+  max-width: auto;
+  margin: 0;
+  padding: 0;
   font-family: "Inter";
 }
 
-/* @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-} */
+
