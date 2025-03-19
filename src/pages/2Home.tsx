@@ -7,7 +7,7 @@ import PopularDestinations from "../components/2PopularDestinations";
 import DownloadApp from "../components/2DownloadApp";
 import NewsletterSubscription from "../components/2SubscribeNewsletter";
 
-export default function Home() {
+export default function Home2() {
   const [activeTab, setActiveTab] = useState("stays");
   const [destination, setDestination] = useState("");
   const [guests, setGuests] = useState("");
