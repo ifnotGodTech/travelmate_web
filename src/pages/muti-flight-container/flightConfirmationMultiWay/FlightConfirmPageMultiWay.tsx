@@ -20,7 +20,7 @@ const FlightConfirmationPage = () => {
             <Navbar />
         </div>
 
-        <div className='mt-[85px] '>
+        <div className='mt-[80px] '>
         <Link to="/">
             <div className='w-[90%] m-auto mb-[14px]'>
                 <div className='flex gap-2 '>
@@ -128,7 +128,7 @@ const FlightConfirmationPage = () => {
 
             <div className='mt-[16px]'>
             <div>
-            <p className='text-[20px] font-medium text-[#181818] mb-[16px]'>Departure Flight</p>
+            <p className='text-[20px] font-medium text-[#181818] mb-[16px]'>Departure Flight 1</p>
             </div>
 
 
@@ -202,7 +202,7 @@ const FlightConfirmationPage = () => {
 
              <div className='mt-[16px] mb-[141px]'>
             <div>
-            <p className='text-[20px] font-medium text-[#181818] mb-[16px]'>Return Flight</p>
+            <p className='text-[20px] font-medium text-[#181818] mb-[16px]'>Departure Flight 2</p>
             </div>
 
 
@@ -278,7 +278,7 @@ const FlightConfirmationPage = () => {
         <div>
                 <div className="">
                     <p className="text-[20px] font-inter font-medium text-[#181818]">Price Summary</p>
-                     <div className="border border-[#CDCED1] rounded-[10px] w-[43.6vw] p-[20px] mt-[20px]">
+                    <div className="border border-[#CDCED1] rounded-[10px] w-[43.6vw] p-[20px] mt-[16px]">
                         <div className="flex flex-col gap-1">
                         <div className="flex justify-between">
                             <div>
@@ -288,22 +288,6 @@ const FlightConfirmationPage = () => {
                             <div><p className="text-[#181818] text-[16px] font-inter">₦40,000</p></div>
                         </div>
 
-                        <div className="flex justify-between">
-                            <div>
-                            <p className="text-[18px] font-inter font-normal text-[#4E4F52]">Taxes & Fees</p>
-                            <p className="text-[14px] font-inter font-normal text-[#4E4F52]">1 Passenger</p>
-                            </div>
-                            <div><p className="text-[#181818] text-[16px] font-inter">₦40,000</p></div>
-                        </div>
-
-
-                        <div className="flex justify-between">
-                            <div>
-                            <p className="text-[18px] font-inter font-normal text-[#4E4F52]">Return Flight</p>
-                            <p className="text-[14px] font-inter font-normal text-[#4E4F52]">1 Passenger</p>
-                            </div>
-                            <div><p className="text-[#181818] text-[16px] font-inter">₦40,000</p></div>
-                        </div>
 
                             <div className="flex justify-between">
                             <div>
@@ -318,7 +302,7 @@ const FlightConfirmationPage = () => {
                         <Divider sx={{ marginTop: "12px", marginBottom: "12px" }} />
                         <div className="flex justify-between">
                             <p>Total</p>
-                            <p className='text-[#023E8A] font-medium'>₦160,000</p>
+                            <p className='text-[#023E8A] font-medium'>₦100,000</p>
                         </div>
                         </div>
                     </div>
