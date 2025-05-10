@@ -1,5 +1,21 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, useRef } from 'react';
 import { Calendar, Clock, MapPin, X, ChevronLeft, ChevronRight, Plus, Minus } from 'lucide-react';
+
+// Hook to detect mobile devices
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    setMatches(media.matches);
+
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [query]);
+
+  return matches;
+};
 
 interface LocationItem {
   id: number;
@@ -47,7 +63,22 @@ export default function AirportTaxiBooking(): JSX.Element {
   ]);
   const [apiLocations, setApiLocations] = useState<LocationItem[]>([]);
   const [filteredPickUpLocations, setFilteredPickUpLocations] = useState<LocationItem[]>([]);
-  const [filteredDropOffLocations, setFilteredDropOffLocations] = useState<LocationItem[]>([]);
+  const [filteredDropOffLocations, setFilteredDropOffLocations] = useState<LocationItem[]>([
+    { id: 1, location: 'Lagos, Nigeria' },
+    { id: 2, location: 'Abuja, Nigeria' },
+    { id: 3, location: 'Port Harcourt, Nigeria' },
+    { id: 4, location: 'Ibadan, Oyo' },
+    { id: 5, location: 'Ibeju Lekki' },
+    { id: 6, location: 'Lekki Phase 1' },
+    { id: 7, location: 'Victoria Island' },
+    { id: 8, location: 'Ikoyi' },
+  ]);
+
+  // Detect mobile device
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Ref to manage search input focus
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Handle modal auto-close
   const closeAllModals = () => {
@@ -84,7 +115,6 @@ export default function AirportTaxiBooking(): JSX.Element {
   const handlePickUpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPickUp(value);
-    setShowSearchModal(true);
 
     // Filter locations based on input
     const filtered = [...recentSearches, ...apiLocations].filter((item) =>
@@ -97,7 +127,6 @@ export default function AirportTaxiBooking(): JSX.Element {
   const handleDropOffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDropOff(value);
-    setShowDestinationModal(true);
 
     // Filter locations based on input
     const filtered = apiLocations.filter((item) =>
@@ -140,7 +169,7 @@ export default function AirportTaxiBooking(): JSX.Element {
     closeAllModals();
   };
 
-  // Other unchanged functions (calendar, time picker, passengers, price range, etc.)
+  // Calendar and time picker functions
   const nextMonth = (): void => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
@@ -157,17 +186,17 @@ export default function AirportTaxiBooking(): JSX.Element {
     return new Date(year, month, 1).getDay();
   };
 
-  const handleDateSelect = (day: number): void => {
-    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+  const handleDateSelect = (day: number, isNextMonth: boolean): void => {
+    const year = currentMonth.getFullYear();
+    const month = isNextMonth ? currentMonth.getMonth() + 1 : currentMonth.getMonth();
+    const newDate = new Date(year, month, day);
     setSelectedDate(newDate);
-    const formattedDate = newDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const formattedDate = newDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
     setPickUpDate(formattedDate);
-  };
-
-  const handleTimeSelect = (hour: number, minute: number): void => {
-    const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-    setPickUpTime(formattedTime);
-    setShowTimeModal(false);
   };
 
   const incrementPassengers = (): void => {
@@ -182,7 +211,7 @@ export default function AirportTaxiBooking(): JSX.Element {
     setShowPriceModal(false);
   };
 
-  const renderCalendar = (monthDate: Date): ReactNode[] => {
+  const renderCalendar = (monthDate: Date, isNextMonth: boolean): ReactNode[] => {
     const year = monthDate.getFullYear();
     const month = monthDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -194,7 +223,6 @@ export default function AirportTaxiBooking(): JSX.Element {
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      // const date = new Date(year, month, day);
       const isSelected =
         selectedDate &&
         selectedDate.getDate() === day &&
@@ -207,7 +235,7 @@ export default function AirportTaxiBooking(): JSX.Element {
           className={`p-2 text-center cursor-pointer ${
             isSelected ? 'bg-[#FF6F1E] text-white rounded-[10px]' : 'hover:bg-[#CDCED1]'
           }`}
-          onClick={() => handleDateSelect(day)}
+          onClick={() => handleDateSelect(day, isNextMonth)}
         >
           {day}
         </div>
@@ -246,10 +274,14 @@ export default function AirportTaxiBooking(): JSX.Element {
 
     const formatTime = (num: number) => num.toString().padStart(2, '0');
 
+    const handleTimeSelect = (hour: number, minute: number): void => {
+      const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      setPickUpTime(formattedTime);
+      setShowTimeModal(false);
+    };
+
     return (
-      <div className="">
-        <h2 className="text-lg font-semibold mb-4 text-center p-4">Pick Up Time</h2>
-        <div className='bg-[#CDCED1] w-full h-[1px] mb-4'></div>
+      <div className="flex flex-col">
         <div className="flex justify-center mb-2 p-4">
           <div className="flex w-full max-w-xs">
             <div id="hour-container" className="flex-1 max-h-64 overflow-y-auto rounded-md">
@@ -281,16 +313,99 @@ export default function AirportTaxiBooking(): JSX.Element {
           </div>
         </div>
         <div className="bg-[#CDCED1] w-full h-[1px] mb-1"></div>
-        <div className='p-4'>
-        <button
-          className="w-full bg-[#023E8A] text-white py-2 rounded-md disabled:bg-gray-400"
-          disabled={selectedHour === null || selectedMinute === null}
-          onClick={confirmTime}
-        >
-          Done
-        </button>
+        <div className="p-4">
+          <button
+            className="w-full bg-[#023E8A] text-white py-2 rounded-md disabled:bg-gray-400"
+            disabled={selectedHour === null || selectedMinute === null}
+            onClick={confirmTime}
+          >
+            Done
+          </button>
         </div>
       </div>
+    );
+  };
+
+  // Modal wrapper component for mobile and desktop
+  const ModalWrapper = ({
+    isOpen,
+    onClose,
+    children,
+    includeSearch,
+    searchValue,
+    onSearchChange,
+    title,
+    isFullScreenOnMobile,
+    isPopup,
+    customWidth,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    children: ReactNode;
+    includeSearch?: boolean;
+    searchValue?: string;
+    onSearchChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    title?: string;
+    isFullScreenOnMobile?: boolean;
+    isPopup?: boolean;
+    customWidth?: string;
+  }) => {
+    // Focus the search input when the modal opens with search
+    useEffect(() => {
+      if (isOpen && includeSearch && searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }, [isOpen, includeSearch]);
+
+    if (!isOpen) return null;
+
+    const modalContent = (
+      <div
+        className={`bg-white rounded-lg flex flex-col shadow-lg max-h-[90vh] mt-[60px] md:mt-0 overflow-y-auto ${
+          customWidth ? customWidth : 'w-full'
+        }`}
+      >
+        <div className=" flex md:hidden justify-between items-center p-4 border-b border-[#CDCED1]">
+          {title && <h2 className="text-lg font-semibold md:hidden">{title}</h2>}
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="p-2 rounded-md hover:bg-gray-100 shadow-sm"
+          >
+            <X className="h-6 w-6 text-gray-600" />
+          </button>
+        </div>
+        {includeSearch && (
+          <div className="p-4">
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search Destination"
+                className="pl-10 w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                value={searchValue}
+                onChange={onSearchChange}
+              />
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-black" />
+            </div>
+          </div>
+        )}
+        <div className="overflow-y-auto p-4 text-gray-500">{children}</div>
+      </div>
+    );
+
+    if (isPopup && !isMobile) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          {modalContent}
+        </div>
+      );
+    }
+
+    return isMobile && isFullScreenOnMobile ? (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col">{modalContent}</div>
+    ) : (
+      <div className="absolute z-50 top-full mt-1 w-full flex justify-center">{modalContent}</div>
     );
   };
 
@@ -313,7 +428,7 @@ export default function AirportTaxiBooking(): JSX.Element {
                   className="pl-10 w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                   value={pickUp}
                   onChange={handlePickUpChange}
-                  onFocus={() => {
+                  onClick={() => {
                     closeAllModals();
                     setShowSearchModal(true);
                     setFilteredPickUpLocations([...recentSearches, ...apiLocations]);
@@ -321,53 +436,52 @@ export default function AirportTaxiBooking(): JSX.Element {
                 />
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-black" />
               </div>
-              {showSearchModal && (
-                <div className="absolute w-full z-50 top-full mt-1">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <div className="p-4">
-                      <div className="mb-4">
-                        <h3 className="text-sm font-medium text-gray-700 my-2">Recent Searches</h3>
-                        <ul className="space-y-2">
-                          {recentSearches
-                            .filter((item) =>
-                              item.location.toLowerCase().includes(pickUp.toLowerCase())
-                            )
-                            .map((item) => (
-                              <li
-                                key={item.id}
-                                className="flex justify-between items-center border-b border-gray-200 py-2"
-                              >
-                                <div
-                                  className="flex items-center cursor-pointer"
-                                  onClick={() => handleLocationSelect(item.location, 'pickup')}
-                                >
-                                  <MapPin className="h-6 w-6 text-[#FF6F1E] border border-[#FF6F1E] rounded-md p-1 mr-2" />
-                                  <span>{item.location}</span>
-                                </div>
-                                <X className="h-4 w-4 text-gray-400 cursor-pointer" />
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 my-2">Other Locations</h3>
-                        <ul className="space-y-2">
-                          {filteredPickUpLocations.map((item) => (
-                            <li
-                              key={item.id}
-                              className="flex items-center cursor-pointer"
-                              onClick={() => handleLocationSelect(item.location, 'pickup')}
-                            >
-                              <MapPin className="h-4 w-4 text-black mr-2" />
-                              <span>{item.location}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+              <ModalWrapper
+                isOpen={showSearchModal}
+                onClose={() => setShowSearchModal(false)}
+                includeSearch={isMobile} // Only show search input on mobile
+                searchValue={pickUp}
+                onSearchChange={handlePickUpChange}
+                title="Pick Up"
+                isFullScreenOnMobile={true}
+              >
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 my-2">Recent Searches</h3>
+                  <ul className="space-y-2">
+                    {recentSearches
+                      .filter((item) => item.location.toLowerCase().includes(pickUp.toLowerCase()))
+                      .map((item) => (
+                        <li
+                          key={item.id}
+                          className="flex justify-between items-center border-b border-gray-200 py-2"
+                        >
+                          <div
+                            className="flex items-center cursor-pointer"
+                            onClick={() => handleLocationSelect(item.location, 'pickup')}
+                          >
+                            <MapPin className="h-6 w-6 text-[#FF6F1E] border border-[#FF6F1E] rounded-md p-1 mr-2" />
+                            <span>{item.location}</span>
+                          </div>
+                          <X className="h-4 w-4 text-gray-400 cursor-pointer" />
+                        </li>
+                      ))}
+                  </ul>
                 </div>
-              )}
+                <div>
+                  <ul className="space-y-2">
+                    {filteredPickUpLocations.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex border-b border-gray-200 py-2"
+                        onClick={() => handleLocationSelect(item.location, 'pickup')}
+                      >
+                        <MapPin className="h-6 w-6 text-[#FF6F1E] border border-[#FF6F1E] rounded-md p-1 mr-2" />
+                        <span>{item.location}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </ModalWrapper>
             </div>
 
             <div className="relative mb-2">
@@ -379,7 +493,7 @@ export default function AirportTaxiBooking(): JSX.Element {
                   className="pl-10 w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                   value={dropOff}
                   onChange={handleDropOffChange}
-                  onFocus={() => {
+                  onClick={() => {
                     closeAllModals();
                     setShowDestinationModal(true);
                     setFilteredDropOffLocations(apiLocations);
@@ -387,29 +501,30 @@ export default function AirportTaxiBooking(): JSX.Element {
                 />
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-black" />
               </div>
-              {showDestinationModal && (
-                <div className="absolute w-full z-50 top-full mt-1">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <div className="p-4">
-                      <div className="mb-4">
-                        <h3 className="text-sm font-medium text-gray-700 my-2">Popular Destinations</h3>
-                        <ul className="space-y-2">
-                          {filteredDropOffLocations.map((item) => (
-                            <li
-                              key={item.id}
-                              className="flex items-center cursor-pointer"
-                              onClick={() => handleLocationSelect(item.location, 'dropoff')}
-                            >
-                              <MapPin className="h-4 w-4 text-black mr-2" />
-                              <span>{item.location}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+              <ModalWrapper
+                isOpen={showDestinationModal}
+                onClose={() => setShowDestinationModal(false)}
+                includeSearch={isMobile} // Only show search input on mobile
+                searchValue={dropOff}
+                onSearchChange={handleDropOffChange}
+                title="Drop Off"
+                isFullScreenOnMobile={true}
+              >
+                <div>
+                  <ul className="space-y-2">
+                    {filteredDropOffLocations.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center cursor-pointer"
+                        onClick={() => handleLocationSelect(item.location, 'dropoff')}
+                      >
+                        <MapPin className="h-4 w-4 text-black mr-2" />
+                        <span>{item.location}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              )}
+              </ModalWrapper>
             </div>
 
             <div className="relative">
@@ -428,67 +543,77 @@ export default function AirportTaxiBooking(): JSX.Element {
                 />
                 <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
               </div>
-              {showPickupDateModal && (
-                <div className="absolute w-[600px] z-50 top-full mt-1 -ml-[140px]">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <div className="p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex justify-between items-center mb-5">
-                            <button onClick={prevMonth} className="p-1 shadow-sm rounded-md">
-                              <ChevronLeft className="h-5 w-5" />
-                            </button>
-                            <span className="font-medium">{formatMonth(currentMonth)}</span>
-                            <div className="w-5"></div>
-                          </div>
-                          <div className="grid grid-cols-7 gap-2 mb-4">
-                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-                              <div key={index} className="text-center font-medium text-sm">
-                                {day}
-                              </div>
-                            ))}
-                            {renderCalendar(currentMonth)}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between items-center mb-5">
-                            <div className="w-5"></div>
-                            <span className="font-medium">
-                              {formatMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                            </span>
-                            <button onClick={nextMonth} className="p-1 shadow-sm rounded-md">
-                              <ChevronRight className="h-5 w-5" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-7 gap-2 mb-4">
-                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-                              <div key={index} className="text-center font-medium text-sm">
-                                {day}
-                              </div>
-                            ))}
-                            {renderCalendar(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                          </div>
-                        </div>
-                      </div>
+              <ModalWrapper
+                isOpen={showPickupDateModal}
+                onClose={() => setShowPickupDateModal(false)}
+                title="Pick Up Date"
+                isFullScreenOnMobile={true}
+                isPopup={true}
+                customWidth="w-full md:w-full lg:w-[600px]"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-center md:justify-between items-center mb-5">
                       <button
-                        className={`w-full py-2 rounded-md ${
-                          selectedDate ? 'bg-[#023E8A] text-white' : 'bg-gray-200 text-gray-600'
-                        }`}
-                        onClick={() => setShowPickupDateModal(false)}
-                        disabled={!selectedDate}
+                        onClick={prevMonth}
+                        className="hidden md:block p-1 shadow-sm rounded-md"
                       >
-                        Select Date
+                        <ChevronLeft className="h-5 w-5" />
                       </button>
+                      <span className="font-medium">{formatMonth(currentMonth)}</span>
+                      <div className="w-5"></div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 mb-4">
+                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                        <div key={index} className="text-center font-medium text-sm">
+                          {day}
+                        </div>
+                      ))}
+                      {renderCalendar(currentMonth, false)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-center md:justify-between items-center mb-5">
+                      <div className="w-5"></div>
+                      <span className="font-medium text-center">
+                        {formatMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                      </span>
+                      <button
+                        onClick={nextMonth}
+                        className="hidden md:block p-1 shadow-sm rounded-md"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 mb-4">
+                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                        <div key={index} className="text-center font-medium text-sm">
+                          {day}
+                        </div>
+                      ))}
+                      {renderCalendar(
+                        new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+                        true
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+                <button
+                  className={`w-full py-2 rounded-md ${
+                    selectedDate ? 'bg-[#023E8A] text-white' : 'bg-gray-200 text-gray-600'
+                  }`}
+                  onClick={() => setShowPickupDateModal(false)}
+                  disabled={!selectedDate}
+                >
+                  Select Date
+                </button>
+              </ModalWrapper>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pick Up Time</label>
+              <label className="block text-sm font-medium text sunk-700 mb-1">Pick Up Time</label>
               <div className="relative">
                 <input
                   type="text"
@@ -503,13 +628,14 @@ export default function AirportTaxiBooking(): JSX.Element {
                 />
                 <Clock className="absolute left-3 top-3 h-4 w-4 text-black" />
               </div>
-              {showTimeModal && (
-                <div className="absolute w-full z-50 top-full mt-1">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <TimePicker />
-                  </div>
-                </div>
-              )}
+              <ModalWrapper
+                isOpen={showTimeModal}
+                onClose={() => setShowTimeModal(false)}
+                title="Pick Up Time"
+                isFullScreenOnMobile={false}
+              >
+                <TimePicker />
+              </ModalWrapper>
             </div>
 
             <div className="relative">
@@ -523,44 +649,38 @@ export default function AirportTaxiBooking(): JSX.Element {
               >
                 {passengers} {passengers === 1 ? 'Passenger' : 'Passengers'}
               </div>
-              {showPassengersModal && (
-                <div className="absolute w-full z-50 top-full mt-1">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <div className="">
-                      <h2 className="text-lg font-semibold mb-4 text-center">Passengers</h2>
-                      <div className="bg-[#CDCED1] w-full h-[1px] mb-1"></div>
-                      <div className="flex justify-between items-center mb-1 p-4">
-                        <span>Passengers</span>
-                        <div className="flex items-center border border-[#CDCED1] rounded-md">
-                          <button
-                            className="w-8 h-8 flex items-center justify-center"
-                            onClick={decrementPassengers}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="mx-4">{passengers}</span>
-                          <button
-                            className="w-8 h-8 flex items-center justify-center"
-                            onClick={incrementPassengers}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="bg-[#CDCED1] w-full h-[1px] mb-1"></div>
-                      <div className="p-4">
-                        
-                      <button
-                        className="w-full bg-[#023E8A] text-white py-2 rounded-md"
-                        onClick={() => setShowPassengersModal(false)}
-                      >
-                        Done
-                      </button>
-                    </div>
-                    </div>
+              <ModalWrapper
+                isOpen={showPassengersModal}
+                onClose={() => setShowPassengersModal(false)}
+                title="Passengers"
+                isFullScreenOnMobile={false}
+              >
+                <div className="flex justify-between items-center mb-1 py-3">
+                  <span>Passengers</span>
+                  <div className="flex items-center border border-[#CDCED1] rounded-md">
+                    <button
+                      className="w-8 h-8 flex items-center justify-center"
+                      onClick={decrementPassengers}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="mx-4">{passengers}</span>
+                    <button
+                      className="w-8 h-8 flex items-center justify-center"
+                      onClick={incrementPassengers}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-              )}
+                <div className="bg-[#CDCED1] w-full h-[1px] mb-4"></div>
+                <button
+                  className="w-full bg-[#023E8A] text-white py-2 rounded-md"
+                  onClick={() => setShowPassengersModal(false)}
+                >
+                  Done
+                </button>
+              </ModalWrapper>
             </div>
 
             <div className="relative">
@@ -574,45 +694,43 @@ export default function AirportTaxiBooking(): JSX.Element {
               >
                 {priceMin && priceMax ? `${priceMin} - ${priceMax}` : 'Enter Minimum - Maximum price'}
               </div>
-              {showPriceModal && (
-                <div className="absolute w-full z-50 top-full mt-1">
-                  <div className="bg-white rounded-lg shadow-lg w-full">
-                    <div className="">
-                      <h2 className="text-lg font-semibold mb-1 text-center p-4">Price Range</h2>
-                      <div className="bg-[#CDCED1] w-full h-[1px] mb-1"></div>
-                      <div className=" p-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Price</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your price"
-                          className="w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
-                          value={priceMin}
-                          onChange={(e) => setPriceMin(e.target.value)}
-                        />
-                      </div>
-                      <div className=" p-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Maximum price</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your price"
-                          className="w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
-                          value={priceMax}
-                          onChange={(e) => setPriceMax(e.target.value)}
-                        />
-                      </div>
-                      <div className="bg-[#CDCED1] w-full h-[1px] mb-1"></div>
-                      <div className="p-4">
-                      <button
-                        className="w-full bg-[#023E8A] text-white py-2 rounded-md"
-                        onClick={handlePriceRangeConfirm}
-                      >
-                        Done
-                      </button>
-                      </div>
-                    </div>
-                  </div>
+              <ModalWrapper
+                isOpen={showPriceModal}
+                onClose={() => setShowPriceModal(false)}
+                title="Price Range"
+                isFullScreenOnMobile={false}
+              >
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Minimum Price
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your price"
+                    className="w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                  />
                 </div>
-              )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Maximum Price
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your price"
+                    className="w-full border border-[#CDCED1] rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="w-full bg-[#023E8A] text-white py-2 rounded-md"
+                  onClick={handlePriceRangeConfirm}
+                >
+                  Done
+                </button>
+              </ModalWrapper>
             </div>
           </div>
         </div>
