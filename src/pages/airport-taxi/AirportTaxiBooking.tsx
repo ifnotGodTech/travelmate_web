@@ -1,5 +1,7 @@
 import { useState, useEffect, ReactNode, useRef } from 'react';
 import { Calendar, Clock, MapPin, X, ChevronLeft, ChevronRight, Plus, Minus } from 'lucide-react';
+import   AuthState  from '../../features/auth/authSlice';
+import { useSelector } from 'react-redux';
 
 // Hook to detect mobile devices
 const useMediaQuery = (query: string) => {
@@ -17,9 +19,19 @@ const useMediaQuery = (query: string) => {
   return matches;
 };
 
-interface LocationItem {
+// Interface for MapLocation (replacing LocationItem)
+interface MapLocation {
   id: number;
-  location: string;
+  name: string;
+  placeId: string;
+  latitude: number;
+  longitude: number;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  airportCode?: string;
+  isAirport: boolean;
 }
 
 interface BookingFormData {
@@ -35,8 +47,37 @@ interface BookingFormData {
   price_min: string;
   price_max: string;
 }
+// Add interface for the API payload
+interface BookingPayload {
+  transfer_id: string;
+  passengers: number;
+  child_seats: number;
+  notes: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    title?: string;
+    contacts: {
+      email: string;
+      phoneNumber?: string;
+    };
+  };
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_date: string;
+  pickup_time: string;
+  end_address: string;
+  end_city: string;
+  end_country: string;
+  end_geo_lat: number;
+  end_geo_long: number;
+  price_min: string;
+  price_max: string;
+}
 
 export default function AirportTaxiBooking(): JSX.Element {
+  const API_BASE_URL = 'https://travelmate-backend-0suw.onrender.com'
+  const auth = useSelector((state: { auth: AuthState }) => state.auth);
   // State for form fields
   const [pickUp, setPickUp] = useState<string>('');
   const [dropOff, setDropOff] = useState<string>('');
@@ -57,28 +98,175 @@ export default function AirportTaxiBooking(): JSX.Element {
   // State for calendar and locations
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [recentSearches, setRecentSearches] = useState<LocationItem[]>([
-    { id: 1, location: 'Ibadan, Oyo' },
-    { id: 2, location: 'Ibeju Lekki' },
+  const [recentSearches, setRecentSearches] = useState<MapLocation[]>([
+    {
+      id: 1,
+      name: 'Ibadan, Oyo, Nigeria',
+      placeId: '1',
+      latitude: 7.3775,
+      longitude: 3.9470,
+      city: 'Ibadan',
+      country: 'NG',
+      isAirport: false,
+    },
+    {
+      id: 2,
+      name: 'Ibeju Lekki, Lagos, Nigeria',
+      placeId: '2',
+      latitude: 6.4696,
+      longitude: 3.7043,
+      city: 'Ibeju Lekki',
+      country: 'NG',
+      isAirport: false,
+    },
   ]);
-  const [apiLocations, setApiLocations] = useState<LocationItem[]>([]);
-  const [filteredPickUpLocations, setFilteredPickUpLocations] = useState<LocationItem[]>([]);
-  const [filteredDropOffLocations, setFilteredDropOffLocations] = useState<LocationItem[]>([
-    { id: 1, location: 'Lagos, Nigeria' },
-    { id: 2, location: 'Abuja, Nigeria' },
-    { id: 3, location: 'Port Harcourt, Nigeria' },
-    { id: 4, location: 'Ibadan, Oyo' },
-    { id: 5, location: 'Ibeju Lekki' },
-    { id: 6, location: 'Lekki Phase 1' },
-    { id: 7, location: 'Victoria Island' },
-    { id: 8, location: 'Ikoyi' },
+  const [apiLocations, setApiLocations] = useState<MapLocation[]>([]);
+  const [filteredPickUpLocations, setFilteredPickUpLocations] = useState<MapLocation[]>([]);
+  const [filteredDropOffLocations, setFilteredDropOffLocations] = useState<MapLocation[]>([
+    {
+      id: 1,
+      name: 'Lagos, Nigeria',
+      placeId: '3',
+      latitude: 6.5244,
+      longitude: 3.3792,
+      city: 'Lagos',
+      country: 'NG',
+      isAirport: false,
+    },
+    {
+      id: 2,
+      name: 'Abuja, Nigeria',
+      placeId: '4',
+      latitude: 9.0579,
+      longitude: 7.4951,
+      city: 'Abuja',
+      country: 'NG',
+      isAirport: false,
+    },
+    {
+      id: 3,
+      name: 'Port Harcourt, Nigeria',
+      placeId: '5',
+      latitude: 4.8156,
+      longitude: 7.0498,
+      city: 'Port Harcourt',
+      country: 'NG',
+      isAirport: false,
+    },
+    {
+      id: 4,
+      name: 'Murtala Muhammed International Airport, Lagos, Nigeria',
+      placeId: '6',
+      latitude: 6.5774,
+      longitude: 3.3212,
+      city: 'Lagos',
+      country: 'NG',
+      airportCode: 'LOS',
+      isAirport: true,
+    },
   ]);
+
+  // Store selected drop-off location for BookingFormData
+  const [selectedDropOffLocation, setSelectedDropOffLocation] = useState<MapLocation | null>(null);
 
   // Detect mobile device
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Ref to manage search input focus
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Cache for API results
+  const cache = useRef<{ [key: string]: MapLocation[] }>({});
+
+  // Helper function to parse float safely
+  const parseDouble = (value: string | undefined): number => {
+    if (!value) return 0;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Helper function to extract airport code (simplified)
+  const extractAirportCode = (displayName: string | undefined): string | undefined => {
+    if (!displayName) return undefined;
+    const match = displayName.match(/\b[A-Z]{3}\b/);
+    return match ? match[0] : undefined;
+  };
+
+  // Function to search locations via Nominatim API
+  const searchDetailedLocation = async (
+    input: string,
+    countryCode?: string
+  ): Promise<MapLocation[]> => {
+    const key = input.trim().toLowerCase();
+
+    // Check cache
+    if (cache.current[key]) {
+      return cache.current[key];
+    }
+
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        q: key,
+        format: 'json',
+        addressdetails: '1',
+        limit: '20',
+        featuretype: 'airport,settlement',
+      });
+      if (countryCode) {
+        params.append('countrycodes', countryCode);
+      }
+
+      const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'TravelMateApp/1.0 (travelmate925@gmail.com)',
+        },
+      });
+   
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Nominatim response:', data);
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+
+      const locations: MapLocation[] = data.map((item: any, index: number) => {
+        const lat = parseDouble(item.lat);
+        const lon = parseDouble(item.lon);
+        const address = item.address || {};
+        const type = item.type || '';
+        const category = item.category || '';
+
+        return {
+          id: index + Date.now(), // Unique ID
+          name: item.display_name || 'Unknown',
+          placeId: item.osm_id?.toString() || '',
+          latitude: lat,
+          longitude: lon,
+          street: address.road || address.pedestrian,
+          city: address.city || address.town || address.village,
+          postalCode: address.postcode,
+          country: address.country_code?.toUpperCase(),
+          airportCode: extractAirportCode(item.display_name),
+          isAirport: type === 'aeroway' || category === 'aerodrome',
+        };
+      });
+
+      // Store in cache
+      cache.current[key] = locations;
+      return locations;
+    } catch (error) {
+      console.error('Nominatim search failed:', error);
+      return [];
+    }
+  };
 
   // Handle modal auto-close
   const closeAllModals = () => {
@@ -90,19 +278,14 @@ export default function AirportTaxiBooking(): JSX.Element {
     setShowPriceModal(false);
   };
 
-  // Fetch locations from API
+  // Fetch locations from Nominatim API
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        // Replace with your API endpoint
-        const response = await fetch('https://api.example.com/locations');
-        const data = await response.json();
-        const locations = data.map((loc: string, index: number) => ({
-          id: index + 3,
-          location: loc,
-        }));
+        const defaultQuery = 'airport'; // Default query for initial locations
+        const locations = await searchDetailedLocation(defaultQuery, 'ng'); // Restrict to Nigeria
         setApiLocations(locations);
-        setFilteredPickUpLocations(locations);
+        setFilteredPickUpLocations([...recentSearches, ...locations]);
         setFilteredDropOffLocations(locations);
       } catch (error) {
         console.error('Error fetching locations:', error);
@@ -112,58 +295,127 @@ export default function AirportTaxiBooking(): JSX.Element {
   }, []);
 
   // Handle input changes for pick-up
-  const handlePickUpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePickUpChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPickUp(value);
 
     // Filter locations based on input
-    const filtered = [...recentSearches, ...apiLocations].filter((item) =>
-      item.location.toLowerCase().includes(value.toLowerCase())
+    let filtered: MapLocation[] = [...recentSearches, ...apiLocations].filter((item) =>
+      item.name.toLowerCase().includes(value.toLowerCase())
     );
+
+    // If input is not empty, search Nominatim API
+    if (value.trim()) {
+      const searchResults = await searchDetailedLocation(value, 'ng');
+      filtered = [...recentSearches, ...searchResults].filter((item) =>
+        item.name.toLowerCase().includes(value.toLowerCase())
+      );
+    }
+
     setFilteredPickUpLocations(filtered);
   };
 
   // Handle input changes for drop-off
-  const handleDropOffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDropOffChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDropOff(value);
 
     // Filter locations based on input
-    const filtered = apiLocations.filter((item) =>
-      item.location.toLowerCase().includes(value.toLowerCase())
+    let filtered: MapLocation[] = apiLocations.filter((item) =>
+      item.name.toLowerCase().includes(value.toLowerCase())
     );
+
+    // If input is not empty, search Nominatim API
+    if (value.trim()) {
+      const searchResults = await searchDetailedLocation(value, 'ng');
+      filtered = searchResults.filter((item) =>
+        item.name.toLowerCase().includes(value.toLowerCase())
+      );
+    }
+
     setFilteredDropOffLocations(filtered);
   };
 
   // Handle search button click
-  const handleSearch = (): void => {
+  // Updated handleSearch function
+  const handleSearch = async (): Promise<void> => {
+    // Construct the booking form data
     const formattedData: BookingFormData = {
       pickup_location: pickUp,
       dropoff_location: dropOff,
       pickup_date: pickUpDate,
       pickup_time: pickUpTime,
-      end_address: 'Avenue Anatole France, 5',
-      end_city: 'Paris',
-      end_country: 'FR',
-      end_geo_lat: 48.859466,
-      end_geo_long: 2.2976965,
+      end_address: selectedDropOffLocation?.street || 'Unknown',
+      end_city: selectedDropOffLocation?.city || 'Unknown',
+      end_country: selectedDropOffLocation?.country || 'NG',
+      end_geo_lat: selectedDropOffLocation?.latitude || 0,
+      end_geo_long: selectedDropOffLocation?.longitude || 0,
       price_min: priceMin,
       price_max: priceMax,
     };
-    console.log(formattedData);
+
+    // Extract customer details from auth state
+    let firstName = '';
+    let lastName = '';
+    if (auth.user?.name) {
+      const nameParts = auth.user.name.trim().split(' ');
+      firstName = nameParts[0] || 'Unknown';
+      lastName = nameParts.slice(1).join(' ') || 'Unknown';
+    }
+
+    // Construct the full payload
+    const payload: BookingPayload = {
+      ...formattedData,
+      transfer_id: 'TRANS12345', // Static value from example
+      passengers: passengers,
+      child_seats: 1, // Static value from example
+      notes: 'Arriving on Flight BA123', // Static value from example
+      customer: {
+        firstName,
+        lastName,
+        title: 'Ms', // Default value (not in authSlice)
+        contacts: {
+          email: auth.user?.email || 'unknown@example.com',
+          phoneNumber: '+1987654321', // Placeholder (not in authSlice)
+        },
+      },
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cars/car-bookings/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.accessToken}`, // Use accessToken from authSlice
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Booking successful:', result);
+      // TODO: Show success message to user (e.g., toast notification)
+    } catch (error) {
+      console.error('Booking failed:', error);
+      // TODO: Show error message to user (e.g., toast notification)
+    }
   };
 
   // Location selection functions
-  const handleLocationSelect = (location: string, type: 'pickup' | 'dropoff'): void => {
+  const handleLocationSelect = (location: MapLocation, type: 'pickup' | 'dropoff'): void => {
     if (type === 'pickup') {
-      setPickUp(location);
+      setPickUp(location.name);
       setRecentSearches((prev) => {
-        const newSearch = { id: Date.now(), location };
-        return [newSearch, ...prev.filter((item) => item.location !== location)].slice(0, 5);
+        const newSearch = { ...location, id: Date.now() };
+        return [newSearch, ...prev.filter((item) => item.name !== location.name)].slice(0, 5);
       });
       setShowSearchModal(false);
     } else {
-      setDropOff(location);
+      setDropOff(location.name);
+      setSelectedDropOffLocation(location); // Store full location for BookingFormData
       setShowDestinationModal(false);
     }
     closeAllModals();
@@ -232,9 +484,8 @@ export default function AirportTaxiBooking(): JSX.Element {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer ${
-            isSelected ? 'bg-[#FF6F1E] text-white rounded-[10px]' : 'hover:bg-[#CDCED1]'
-          }`}
+          className={`p-2 text-center cursor-pointer ${isSelected ? 'bg-[#FF6F1E] text-white rounded-[10px]' : 'hover:bg-[#CDCED1]'
+            }`}
           onClick={() => handleDateSelect(day, isNextMonth)}
         >
           {day}
@@ -288,9 +539,8 @@ export default function AirportTaxiBooking(): JSX.Element {
               {hours.map((hour) => (
                 <div
                   key={hour}
-                  className={`text-center p-3 cursor-pointer hover:bg-[#CDCED1] ${
-                    selectedHour === hour ? 'bg-[#F5F5F5]' : ''
-                  }`}
+                  className={`text-center p-3 cursor-pointer hover:bg-[#CDCED1] ${selectedHour === hour ? 'bg-[#F5F5F5]' : ''
+                    }`}
                   onClick={() => setSelectedHour(hour)}
                 >
                   {formatTime(hour)}
@@ -301,9 +551,8 @@ export default function AirportTaxiBooking(): JSX.Element {
               {minutes.map((minute) => (
                 <div
                   key={minute}
-                  className={`text-center p-3 cursor-pointer hover:bg-[#CDCED1] ${
-                    selectedMinute === minute ? 'bg-[#F5F5F5]' : ''
-                  }`}
+                  className={`text-center p-3 cursor-pointer hover:bg-[#CDCED1] ${selectedMinute === minute ? 'bg-[#F5F5F5]' : ''
+                    }`}
                   onClick={() => setSelectedMinute(minute)}
                 >
                   {formatTime(minute)}
@@ -361,11 +610,10 @@ export default function AirportTaxiBooking(): JSX.Element {
 
     const modalContent = (
       <div
-        className={`bg-white rounded-lg flex flex-col shadow-lg max-h-[90vh] mt-[60px] md:mt-0 overflow-y-auto ${
-          customWidth ? customWidth : 'w-full'
-        }`}
+        className={`bg-white rounded-lg flex flex-col shadow-lg max-h-[90vh] mt-[60px] md:mt-0 overflow-y-auto ${customWidth ? customWidth : 'w-full'
+          }`}
       >
-        <div className=" flex md:hidden justify-between items-center p-4 border-b border-[#CDCED1]">
+        <div className="flex md:hidden justify-between items-center p-4 border-b border-[#CDCED1]">
           {title && <h2 className="text-lg font-semibold md:hidden">{title}</h2>}
           <button
             onClick={onClose}
@@ -396,7 +644,7 @@ export default function AirportTaxiBooking(): JSX.Element {
 
     if (isPopup && !isMobile) {
       return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+        <div className="fixed md:absolute md:mt-[110%] md:w-[600px] md W-[100%] lg:-ml-[50%] lg:mt-[75%] 2xl:mt-[] inset-0 z-50 bg-black/50 flex items-center justify-center">
           {modalContent}
         </div>
       );
@@ -439,7 +687,7 @@ export default function AirportTaxiBooking(): JSX.Element {
               <ModalWrapper
                 isOpen={showSearchModal}
                 onClose={() => setShowSearchModal(false)}
-                includeSearch={isMobile} // Only show search input on mobile
+                includeSearch={isMobile}
                 searchValue={pickUp}
                 onSearchChange={handlePickUpChange}
                 title="Pick Up"
@@ -449,7 +697,7 @@ export default function AirportTaxiBooking(): JSX.Element {
                   <h3 className="text-sm font-medium text-gray-700 my-2">Recent Searches</h3>
                   <ul className="space-y-2">
                     {recentSearches
-                      .filter((item) => item.location.toLowerCase().includes(pickUp.toLowerCase()))
+                      .filter((item) => item.name.toLowerCase().includes(pickUp.toLowerCase()))
                       .map((item) => (
                         <li
                           key={item.id}
@@ -457,10 +705,15 @@ export default function AirportTaxiBooking(): JSX.Element {
                         >
                           <div
                             className="flex items-center cursor-pointer"
-                            onClick={() => handleLocationSelect(item.location, 'pickup')}
+                            onClick={() => handleLocationSelect(item, 'pickup')}
                           >
                             <MapPin className="h-6 w-6 text-[#FF6F1E] border border-[#FF6F1E] rounded-md p-1 mr-2" />
-                            <span>{item.location}</span>
+                            <div>
+                              <span>{item.name}</span>
+                              <p className="text-xs text-gray-500">
+                                {item.city}, {item.country} {item.isAirport ? '(Airport)' : ''}
+                              </p>
+                            </div>
                           </div>
                           <X className="h-4 w-4 text-gray-400 cursor-pointer" />
                         </li>
@@ -468,15 +721,21 @@ export default function AirportTaxiBooking(): JSX.Element {
                   </ul>
                 </div>
                 <div>
+                  <h3 className="text-sm font-medium text-gray-700 my-2">Suggested Locations</h3>
                   <ul className="space-y-2">
                     {filteredPickUpLocations.map((item) => (
                       <li
                         key={item.id}
                         className="flex border-b border-gray-200 py-2"
-                        onClick={() => handleLocationSelect(item.location, 'pickup')}
+                        onClick={() => handleLocationSelect(item, 'pickup')}
                       >
                         <MapPin className="h-6 w-6 text-[#FF6F1E] border border-[#FF6F1E] rounded-md p-1 mr-2" />
-                        <span>{item.location}</span>
+                        <div>
+                          <span>{item.name}</span>
+                          <p className="text-xs text-gray-500">
+                            {item.city}, {item.country} {item.isAirport ? '(Airport)' : ''}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -504,7 +763,7 @@ export default function AirportTaxiBooking(): JSX.Element {
               <ModalWrapper
                 isOpen={showDestinationModal}
                 onClose={() => setShowDestinationModal(false)}
-                includeSearch={isMobile} // Only show search input on mobile
+                includeSearch={isMobile}
                 searchValue={dropOff}
                 onSearchChange={handleDropOffChange}
                 title="Drop Off"
@@ -515,11 +774,16 @@ export default function AirportTaxiBooking(): JSX.Element {
                     {filteredDropOffLocations.map((item) => (
                       <li
                         key={item.id}
-                        className="flex items-center cursor-pointer"
-                        onClick={() => handleLocationSelect(item.location, 'dropoff')}
+                        className="flex items-center cursor-pointer border-b border-gray-200 py-2"
+                        onClick={() => handleLocationSelect(item, 'dropoff')}
                       >
                         <MapPin className="h-4 w-4 text-black mr-2" />
-                        <span>{item.location}</span>
+                        <div>
+                          <span>{item.name}</span>
+                          <p className="text-xs text-gray-500">
+                            {item.city}, {item.country} {item.isAirport ? '(Airport)' : ''}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -549,7 +813,7 @@ export default function AirportTaxiBooking(): JSX.Element {
                 title="Pick Up Date"
                 isFullScreenOnMobile={true}
                 isPopup={true}
-                customWidth="w-full md:w-full lg:w-[600px]"
+                customWidth="w-full md:w-[] lg:w-[600px] lg:absolute "
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -598,10 +862,17 @@ export default function AirportTaxiBooking(): JSX.Element {
                     </div>
                   </div>
                 </div>
+                <p className="text-center text-sm font-extrabold text-black mb-4">
+                  {selectedDate
+                    ? ` ${selectedDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}`
+                    : 'Pick date'}
+                </p>
                 <button
-                  className={`w-full py-2 rounded-md ${
-                    selectedDate ? 'bg-[#023E8A] text-white' : 'bg-gray-200 text-gray-600'
-                  }`}
+                  className={`w-full py-2 rounded-md ${selectedDate ? 'bg-[#023E8A] text-white' : 'bg-gray-200 text-gray-600'
+                    }`}
                   onClick={() => setShowPickupDateModal(false)}
                   disabled={!selectedDate}
                 >
@@ -613,7 +884,7 @@ export default function AirportTaxiBooking(): JSX.Element {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <label className="block text-sm font-medium text sunk-700 mb-1">Pick Up Time</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pick Up Time</label>
               <div className="relative">
                 <input
                   type="text"
@@ -733,6 +1004,8 @@ export default function AirportTaxiBooking(): JSX.Element {
               </ModalWrapper>
             </div>
           </div>
+      
+         
         </div>
         <div className="mt-4 flex justify-end">
           <button
