@@ -1,18 +1,16 @@
-import { useEffect, useRef } from "react";
+import React from "react";
 import { Chat } from "../../types/chat";
 import { FiFileText } from "react-icons/fi";
 import { parseISO } from "date-fns";
 
-const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
-  const bottomRef = useRef<HTMLDivElement>(null);
+interface InlineChatDisplayProps {
+  activeChat: Chat | null;
+}
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChat]);
+const InlineChatDisplay: React.FC<InlineChatDisplayProps> = ({ activeChat }) => {
 
   if (!activeChat) {
-    console.log("no active chat");
-    return null;
+    return <div className="text-gray-500 italic">No chat selected.</div>;
   }
 
   // Combine messages and claim_history into one sorted array
@@ -47,11 +45,12 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
     });
   }
 
-
   // Add messages
-  activeChat.messages.forEach((msg) => {
-    combinedItems.push({ type: "message", data: msg });
-  });
+  if (activeChat.messages) {
+    activeChat.messages.forEach((msg) => {
+      combinedItems.push({ type: "message", data: msg });
+    });
+  }
 
   // Sort combined items by timestamp ascending
   combinedItems.sort((a, b) => {
@@ -61,14 +60,14 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
   });
 
   return (
-    <div className="flex flex-col gap-2 py-2 mb-20 overflow-x-hidden">
+    <div className="flex flex-col gap-2 py-2 overflow-y-auto">
       {combinedItems.map((item, idx) => {
         if (item.type === "claim") {
           // Render centered claim history note
           return (
             <div
               key={`claim-${item.data.id}`}
-              className="text-sm md:text-base text-blue-800 bg-blue-50 text-center border border-blue-200 p-2 rounded-md my-5 max-w-[95%] w-full md:w-[80%] mx-auto"
+              className="text-sm md:text-base text-blue-800 bg-blue-50 text-center border border-blue-200 p-2 rounded-md my-2 max-w-full w-full mx-auto"
             >
               {item.data.claim_note_text}
             </div>
@@ -89,7 +88,7 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
           "A";
 
         // Filter out empty messages with no file
-        if (msg.content.trim() === "" && !msg.file_url) {
+        if (msg.content?.trim() === "" && !msg.file_url) {
           return null;
         }
 
@@ -163,7 +162,6 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
                     </div>
                   )}
                 </div>
-
                 <small className="text-gray-500 text-xs mt-1">
                   {isUser ? (
                     msg.pending
@@ -189,7 +187,6 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
                 </small>
               </div>
             </div>
-            <div ref={bottomRef} />
           </div>
         );
       })}
@@ -197,4 +194,4 @@ const ChatMessages = ({ activeChat }: { activeChat: Chat | null }) => {
   );
 };
 
-export default ChatMessages;
+export default InlineChatDisplay;
