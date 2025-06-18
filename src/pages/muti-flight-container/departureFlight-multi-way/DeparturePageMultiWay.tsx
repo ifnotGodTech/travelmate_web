@@ -139,10 +139,6 @@ const DeparturePage: React.FC<DepartureListProps> = () => {
      const [selectedClass, setSelectedClass] = useState(initialFlight || "");
     const [flightClasses, setFlightClasses] = useState(false);
     const anchorRef = useRef(null);
-
-  
-    
-
     const [openFrom, setOpenFrom] = useState(false);
     const [FromClick, setFromClick] = useState<HTMLElement | null>(null);
      const [FromId, setFromId] = useState<number | null>(null);

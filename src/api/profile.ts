@@ -25,7 +25,6 @@ interface ProfileData {
 }
 
 
-
 export const createUserProfile = async (
   profileData: ProfileData,
   accessToken: string,
