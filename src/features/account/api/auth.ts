@@ -100,8 +100,6 @@ export const loginUser = async (email: string, password: string) => {
 
 
 
-
-// Corrected logoutUser function
 export const logoutUser = async (accessToken: string) => {
   try {
     console.log("📤 Initiating logout request...");
@@ -118,7 +116,7 @@ export const logoutUser = async (accessToken: string) => {
       }
     );
 
-    console.log("✅ Logout successful:", response.status); // Should log 204
+    console.log("✅ Logout successful:", response.status);
   } catch (error: any) {
     if (error.response) {
       console.error("❌ Logout request failed", error.response.status, error.response.data);
