@@ -99,7 +99,6 @@ export const loginUser = async (email: string, password: string) => {
 
 
 
-
 export const logoutUser = async (accessToken: string) => {
   try {
     console.log("📤 Initiating logout request...");
