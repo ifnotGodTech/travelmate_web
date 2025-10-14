@@ -248,3 +248,6 @@ export const setNewPassword = async (email: string, new_password: string) => {
     throw new Error('Failed to set new password');
   }
 };
+
+
+
