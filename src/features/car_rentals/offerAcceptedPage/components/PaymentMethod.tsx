@@ -1,20 +1,22 @@
-import { ArrowRight } from "lucide-react";
 import { Checkbox, Divider, FormControlLabel } from "@mui/material";
-import Paypal from "../../../../assets/images/paypal.png"
-interface PaymentMethodProps {
-  checked: boolean;
-  toggleCheck: () => void;
-  roomPrice?: number;
-}
+import { ArrowRight } from "lucide-react";
+import Paypal from "../../../../assets/images/paypal.png";
+import { DeskProps } from "../Page";
+
+type PaymentMethodProps = {
+  car: any;
+} & DeskProps;
+
 
 const PaymentMethod = ({
-  checked,
-  toggleCheck,
-  roomPrice,
+  car,
+  formData,
+  handleCheckboxChange,
 }: PaymentMethodProps) => {
+
   return (
-    <div className="lg:px-6 px-1 mt-12">
-      <div className="border-[#CDCED1] lg:border rounded-lg lg:p-5">
+    <div className="lg:px-6 px-4 mt-12">
+      <div className="border-[#CDCED1] lg:border rounded-lg p-5">
         <div className="flex items-center gap-1 mb-4">
           <img
             src={Paypal}
@@ -23,9 +25,9 @@ const PaymentMethod = ({
           />
           <p className="font-bold text-lg">Stripe</p>
         </div>
-        <div className="flex flex-col justify-center items-center gap-4 bg-[#FAFAFA] rounded-lg lg:p-26 p-6 py-12  ">
+        <div className="flex flex-col justify-center items-center gap-4 bg-[#FAFAFA] rounded-lg lg:p-26 p-12 ">
           <ArrowRight className="font-bold lg:w-12 lg:h-12 h-8 w-8" />
-          <p className="text-[#4E4F52] text-center">
+          <p className="text-[#4E4F52]">
             You'll be redirected to Stripe to complete your secure payment
           </p>
         </div>
@@ -36,7 +38,7 @@ const PaymentMethod = ({
       </p>
       <div className="px-6  border-[#CDCED1] lg:border rounded-lg p-5 flex justify-between items-center w-full">
         <p className="font-bold text-[#4E4F52]">Total</p>
-        <p className="font-bold">€{roomPrice?.toFixed(2) || "----"}</p>
+        <p className="font-bold">€{car?.price.totalAmountWithFee}</p>
       </div>
 
       <Divider
@@ -44,9 +46,14 @@ const PaymentMethod = ({
         className="lg:hidden"
       />
 
-      <div className=" mt-5">
+      <div className="px-6 mt-5">
         <FormControlLabel
-          control={<Checkbox checked={checked} onChange={toggleCheck} />}
+          control={
+            <Checkbox
+              checked={formData.agreement}
+              onChange={handleCheckboxChange}
+            />
+          }
           label={
             <p className="text-[11px]">
               I agree to the{" "}
