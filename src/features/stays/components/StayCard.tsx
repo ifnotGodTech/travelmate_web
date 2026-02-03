@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaStar,
   FaMapMarkerAlt,
@@ -17,20 +17,24 @@ interface StayCardProps {
   hotel: Hotel;
   checkIn?: string;
   checkOut?: string;
-  isFavorited?: boolean;
+  // isFavorited?: boolean;
 }
 
 const StayCard: React.FC<StayCardProps> = ({
   hotel,
   checkIn,
   checkOut,
-  isFavorited = false,
+  // isFavorited
 }) => {
   const navigate = useNavigate();
-  const [favorite, setFavorite] = useState(isFavorited);
+  const [favorite, setFavorite] = useState(hotel.is_favorite);
   const [showTooltip, setShowTooltip] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { searchParams } = useSelector((state: RootState) => state.stays);
+
+  useEffect(() => {
+  setFavorite(hotel.is_favorite);
+}, [hotel.is_favorite]);
 
   // Extract all relevant data
   const firstRoom = hotel.rooms?.[0];
@@ -47,7 +51,7 @@ const StayCard: React.FC<StayCardProps> = ({
     checkIn && checkOut
       ? Math.ceil(
           (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
-            (1000 * 60 * 60 * 24)
+            (1000 * 60 * 60 * 24),
         )
       : 1;
 
@@ -82,17 +86,13 @@ const StayCard: React.FC<StayCardProps> = ({
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setFavorite(!favorite);
+    const previousState = favorite;
+    setFavorite(!previousState);
     try {
-      const response = await addOrRemoveFavorite(
-        hotel.code,
-        setFavorite,
-        favorite
-      );
-      const newFavorite = !favorite;
-      setFavorite(newFavorite);
-      toast.success(response);
+      const response = await addOrRemoveFavorite(hotel.code);
+      toast.success(response.message);
     } catch (error) {
+      setFavorite((prev) => !prev);
       toast.error("Something went wrong");
     }
   };
@@ -111,7 +111,7 @@ const StayCard: React.FC<StayCardProps> = ({
             }&favorite=${hotel.is_favorite}`,
             {
               state: { checkIn, checkOut, selectedHotel: hotel },
-            }
+            },
           );
         }
       }}
@@ -161,11 +161,8 @@ const StayCard: React.FC<StayCardProps> = ({
           className="absolute top-3 right-3 bg-white rounded-md p-2 cursor-pointer hover:bg-gray-100 transition-colors duration-200"
           aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
         >
-          {hotel.is_favorite ? (
-            <FaHeart
-              fill="oklch(57.7% 0.245 27.325)"
-              className="text-red-600 text-2xl"
-            />
+          {favorite ? (
+            <FaHeart fill="#ff0000" className="text-red-600 text-2xl" />
           ) : (
             <FaRegHeart className="text-black text-2xl" />
           )}
@@ -213,7 +210,7 @@ const StayCard: React.FC<StayCardProps> = ({
           <div className="ml-auto text-right">
             <span className="text-lg font-bold">
               {formatPrice(
-                firstRate?.net ? parseFloat(firstRate.net) * nights : undefined
+                firstRate?.net ? parseFloat(firstRate.net) * nights : undefined,
               )}
             </span>
             <p className="text-gray-500 text-sm">

@@ -21,6 +21,7 @@ import {
   fetchAllBookings,
 } from "../features/stays/api";
 import { getAccessToken } from "../api/services/authUtils";
+import ConfirmCancel from "./BookingsDetails/transfers/ConfirmCancel";
 
 export interface NormalizedBooking {
   id: string;
@@ -51,7 +52,7 @@ const Bookings = () => {
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<NormalizedBooking[]>([]);
   const [cancelingBookingId, setCancelingBookingId] = useState<string | null>(
-    null
+    null,
   );
 
   const currentTab = searchParams.get("tab") || "pending";
@@ -65,7 +66,7 @@ const Bookings = () => {
 
   const mergeBookings = (data: any): NormalizedBooking[] => {
     const stays = (data.stays || []).map((s: any) => ({
-      id: s.id,
+      id: s.reference,
       type: "stay",
       reference: s.reference,
       status: s.booking_status?.toLowerCase(),
@@ -80,7 +81,7 @@ const Bookings = () => {
     }));
 
     const transfers = (data.transfers || []).map((t: any) => ({
-      id: t.booking_reference,
+      id: t.id,
       type: "transfer",
       reference: t.booking_reference,
       status: t.booking_status?.toLowerCase(),
@@ -127,6 +128,7 @@ const Bookings = () => {
         const res = await fetchAllBookings();
         if (res?.data) {
           setBookings(mergeBookings(res.data));
+          console.log(res.data);
         }
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
@@ -143,17 +145,21 @@ const Bookings = () => {
   const handleCancelBooking = async (bookingId: string) => {
     try {
       setCancelingBookingId(bookingId);
+      
       const bookingToCancel = bookings.find(
         (b) => b.reference === bookingId || b.id === bookingId
       );
-
+      console.log(bookingToCancel);
+      
       if (!bookingToCancel) {
         throw new Error("Booking not found");
       }
       if (bookingToCancel.type === "stay") {
         await CancelStaysBookings(bookingId);
-      } else {
+      } else  if(bookingToCancel.type === "transfer") {
         await CancelTransferBookings(bookingId);
+      }else{
+        toast.error("Flight booking cancellation is not supported yet");
       }
 
       toast.success("Booking cancelled successfully");
@@ -178,8 +184,10 @@ const Bookings = () => {
       // Map URL tabs to specific data statuses
       switch (currentTab) {
         case "pending": // "Ongoing" tab
-          return status === "ongoing" ||
-            (status === "confirmed" && date > new Date());
+          return (
+            status === "ongoing" ||
+            (status === "confirmed" && date > new Date())
+          );
 
         case "completed":
           return (
@@ -203,7 +211,7 @@ const Bookings = () => {
     <div className="mt-24">
       <Navbar />
       <Breadcrumbs items={breadcrumbs} />
-
+  
       <div className="lg:px-10 px-4">
         <h1 className="text-2xl py-6 font-bold">Bookings</h1>
 

@@ -20,8 +20,8 @@ const Ongoing = ({ bookings, onCancel, cancelingId }: BookingsProps) => {
       (item.type === "stay"
         ? hotelimage
         : item.type === "transfer"
-        ? carImage
-        : flightImage);
+          ? carImage
+          : flightImage);
 
     const name =
       item.name ||
@@ -35,7 +35,7 @@ const Ongoing = ({ bookings, onCancel, cancelingId }: BookingsProps) => {
       const end = item.date_to || item.originalData?.check_out;
       if (start && end) {
         dateStr = `${new Date(start).toDateString()} - ${new Date(
-          end
+          end,
         ).toDateString()}`;
       } else {
         dateStr = new Date(start).toDateString();
@@ -58,9 +58,9 @@ const Ongoing = ({ bookings, onCancel, cancelingId }: BookingsProps) => {
     <div>
       {bookings.length === 0 ? (
         <EmptyState
-        title="No Ongoing Bookings yet"
-        content="You haven't made any ongoing bookings yet. When you do, they will appear here."
-      />
+          title="No Ongoing Bookings yet"
+          content="You haven't made any ongoing bookings yet. When you do, they will appear here."
+        />
       ) : (
         bookings.map((item) => {
           const { image, name, dateStr, amount, currency } = getDetails(item);
@@ -72,11 +72,15 @@ const Ongoing = ({ bookings, onCancel, cancelingId }: BookingsProps) => {
               onClick={() => {
                 item.type === "stay"
                   ? navigate(
-                      `/bookings/stays-details/?session_id=${item.session_id}`
+                      `/bookings/stays-details/?session_id=${item.session_id}`,
                     )
                   : item.type === "transfer"
-                  ? navigate(`/bookings/transfers-details/?session_id=${item.session_id}`)
-                  : navigate(`bookings/flight-details/?session_id=${item.session_id}`);
+                    ? navigate(
+                        `/bookings/transfers-details/?session_id=${item.session_id}&id=${item.id}`,
+                      )
+                    : navigate(
+                        `bookings/flight-details/?session_id=${item.session_id}`,
+                      );
               }}
             >
               <div className="flex justify-normal items-start gap-3">
@@ -103,14 +107,14 @@ const Ongoing = ({ bookings, onCancel, cancelingId }: BookingsProps) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onCancel?.(item.reference);
+                  onCancel?.(item.id);
                 }}
-                disabled={cancelingId === item.reference}
+                disabled={cancelingId === item.id}
                 className="flex justify-end items-center cursor-pointer gap-1 group"
               >
                 <X className="size-4 text-[#D72638] group-hover:text-[#ea6d79]" />
                 <p className="text-[#D72638] group-hover:text-[#ea6d79] text-sm">
-                  {cancelingId === item.reference ? "Cancelling..." : "Cancel"}
+                  {cancelingId === item.id ? "Cancelling..." : "Cancel"}
                 </p>
               </button>
             </div>

@@ -90,7 +90,7 @@ const StayList: React.FC<StayListProps> = ({ hotels }) => {
         </div>
       )}
 
-      {/* Pagination - Only show if there are multiple pages */}
+      {/* Pagination - Only show if there are multiple pages */} 
       {totalPages > 1 && (
         <div className="flex justify-center items-center mt-10 space-x-2">
           <button

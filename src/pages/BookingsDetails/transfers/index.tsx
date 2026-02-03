@@ -32,6 +32,7 @@ import NotFound from "../NotFound";
 const BookingTransfersDetails = () => {
   const searchParams = new URLSearchParams(location.search);
   const sessionId = searchParams?.get("session_id");
+ const bookingIdFromUrl = searchParams.get("id") ?? undefined;
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [booking, setBooking] = useState<TransfersDetailsResponse>();
@@ -66,9 +67,9 @@ const BookingTransfersDetails = () => {
       setDownloadLoading(true);
       window.open(
         `/car-paid/download?data=${encodeURIComponent(
-          JSON.stringify(bookingItem)
+          JSON.stringify(bookingItem),
         )}`,
-        "_blank"
+        "_blank",
       );
     } catch (error) {
       toast.error("Failed to download, try again");
@@ -92,9 +93,9 @@ const BookingTransfersDetails = () => {
     }
   };
 
-  const handleCancelBookings = async (bookingId: string | undefined) => {
+  const handleCancelBookings = async () => {
     try {
-      await CancelTransferBookings(bookingId, setCancelLoad);
+      await CancelTransferBookings(bookingIdFromUrl, setCancelLoad);
       toast.success("Booking cancelled successfully");
 
       setBooking((prev: any) => {
@@ -131,7 +132,7 @@ const BookingTransfersDetails = () => {
           <ConfirmCancel
             bookings={booking}
             closeModal={() => setOpenConfirm(false)}
-            handleCancel={() => handleCancelBookings(booking?.reference)}
+            handleCancel={ handleCancelBookings}
             loadCancel={cancelLoad}
           />
         )}
@@ -214,7 +215,7 @@ const BookingTransfersDetails = () => {
                   </p>
                   <p
                     className={`text-[14px] font-normal ${getStatusColor(
-                      booking?.status
+                      booking?.status,
                     )}`}
                   >
                     {booking?.status}

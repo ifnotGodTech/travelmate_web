@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ReusableDateSelector from "./ReusableDateSelector";
 import HotelGuestSelector from "./HotelGuestSelector";
-import LocationDropdown from "./booking-progress/LocationDropdown";
+import LocationDropdown from "./LocationDropdown";
 import { setSearchParams, setLocationDetails, clearStaysCache } from "../slice";
 import { AppDispatch, RootState } from "../../../store";
 import { fetchDestinations } from "../api";

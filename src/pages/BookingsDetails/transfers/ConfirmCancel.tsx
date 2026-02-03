@@ -21,8 +21,8 @@ const ConfirmCancel = ({
 
   const [reason, setReason] = useState("");
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-lg rounded-xl shadow-lg p-6 space-y-6">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 overflow-y-scroll">
+      <div className="bg-white w-full max-w-lg rounded-xl shadow-lg p-6 space-y-6  lg:mt-54">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-300 pb-3">
           <h2 className="text-lg font-semibold text-gray-900 text-center">

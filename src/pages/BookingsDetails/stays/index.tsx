@@ -136,7 +136,7 @@ const BookingStaysDetailsPage: React.FC = () => {
             <ChevronLeft
               width={30}
               height={30}
-              className="bg-white rounded-sm shadow-lg"
+              className="bg-white rounded-sm shadow-lg cursor-pointer"
               onClick={() => navigate(-1)}
             />
             <h1 className="text-2xl font-bold">Booking Details</h1>

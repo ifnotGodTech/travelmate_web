@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ReusableDateSelector from "./ReusableDateSelector";
-import LocationDropdown from "./booking-progress/LocationDropdown";
+import LocationDropdown from "./LocationDropdown";
 import HotelGuestSelector from "./HotelGuestSelector";
 import { useDispatch, useSelector } from "react-redux";
 import { clearStaysCache, setLocationDetails, setSearchParams } from "../slice";
@@ -26,27 +26,27 @@ interface SearchParams {
 }
 
 const SearchFilter: React.FC = () => {
-  const { searchParams, locationDetails } = useSelector(
+  const { searchParams} = useSelector(
     (state: RootState) => state.stays
   );
 
   const [destinationCode, setDestinationCode] = useState(
     searchParams?.destination || ""
   );
-  const [destination, setDestination] = useState(locationDetails?.name || "");
-  const [checkIn, setCheckIn] = useState(searchParams?.checkIn || "");
-  const [checkOut, setCheckOut] = useState(searchParams?.checkOut || "");
+  const [destination, setDestination] = useState("");
+  const [checkIn, setCheckIn] = useState( "");
+  const [checkOut, setCheckOut] = useState("");
   const [locations, setLocations] = useState<Destination[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [guestText, setGuestText] = useState(
-    `${searchParams?.adults || 2} adults, ${searchParams?.rooms || 1} rooms ` ||
+    `${ 2} adults, ${ 1} rooms ` ||
       ""
   );
   const [counts, setCounts] = useState({
-    rooms: searchParams?.rooms || 1,
-    adults: searchParams?.adults || 2,
-    children: searchParams?.children || 0,
+    rooms:  1,
+    adults:  2,
+    children:  0,
     infants: 0,
   });
   const { accessToken } = useSelector((state: RootState) => state.auth);

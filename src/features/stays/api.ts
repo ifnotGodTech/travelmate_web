@@ -255,12 +255,10 @@ export const fetchFavorites = async () => {
   }
 };
 
-export const addOrRemoveFavorite = async (hotelId: string | null, setIsFavorite: (data: boolean) => void, favorite: boolean) => {
+export const addOrRemoveFavorite = async (hotelId: string | null) => {
   try {
     const response = await api.post('/hotels/favorites/toggle/', { hotel_id: hotelId });
-    setIsFavorite(!favorite);
-    console.log(response.data.message)
-    return response.data.message;
+    return response.data;
 
   }
   catch (error: any) {
@@ -313,7 +311,8 @@ export const CancelStaysBookings = async (bookingId: string | undefined,
   setLoading?: (loading: boolean) => void, cancellation_reason?: string) => {
   try {
     setLoading?.(true);
-    const response = await api.post(`/hotels/${bookingId}/cancel-booking/`, cancellation_reason)
+    const response = await api.post(`/hotels/${bookingId}/cancel-booking/`,  cancellation_reason )
+    console.log(response.data)
     return response.data;
   } catch (error: any) {
     const errorMessage = error.response?.data?.error || error.message || error;
@@ -324,18 +323,25 @@ export const CancelStaysBookings = async (bookingId: string | undefined,
     setLoading?.(false);
   }
 }
-export const CancelTransferBookings = async (bookingId: string | undefined,
-  setLoading?: (loading: boolean) => void, reason?: string) => {
+export const CancelTransferBookings = async (
+  bookingId: string|undefined,
+  setLoading?: (loading: boolean) => void,
+  reason?: string
+) => {
   try {
-    setLoading?.(true);
-    const response = await api.post(`/transfers/booking/${bookingId}/cancel/`, reason)
+    setLoading?.(true)
+    const response = await api.post(
+      `/transfers/booking/${bookingId}/cancel/`,
+      { reason }
+    );
+
     return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.error || error.message || error;
-    console.error('Booking error:', errorMessage);
+    const errorMessage =
+      error.response?.data?.error || error.message || "Cancellation failed";
+    console.error("Booking error:", errorMessage);
     throw new Error(errorMessage);
-
-  } finally {
+  }finally{
     setLoading?.(false);
   }
-}
+};

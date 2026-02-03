@@ -2,28 +2,30 @@ import React, { useState } from "react";
 import {
   FaUser,
   FaEnvelope,
-  FaCalendarAlt,
   FaCaretDown,
   FaPhoneAlt,
   FaCity,
 } from "react-icons/fa";
+// Make sure this path matches where your interfaces are defined
 import { GuestInfoProps } from "../../slice";
 import { FormControlLabel, Switch } from "@mui/material";
 import CountryCodeModal from "../modals/CountryCodeModal";
 import { MdLocationOn } from "react-icons/md";
 import { PiSignpostFill } from "react-icons/pi";
+import DateOfBirthPicker from "./date-of-birth-picker";
 
 interface GuestInformationProps {
   onGuestInfoChange: (info: GuestInfoProps) => void;
   formData: GuestInfoProps;
-  errors: GuestInfoProps;
+  errors: Partial<GuestInfoProps>;
+  clearErrors?: (field: keyof GuestInfoProps) => void;
 }
 
 const GuestInformation: React.FC<GuestInformationProps> = ({
   onGuestInfoChange,
   formData,
   errors,
-  // guestAdults
+  clearErrors,
 }) => {
   const [useProfileInfo, setUseProfileInfo] = useState(false);
   const [modal, setModal] = useState(false);
@@ -36,17 +38,25 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const newData = { ...formData, [name]: value };
+
+    // 1. Update Parent State
     onGuestInfoChange(newData);
-    onGuestInfoChange(newData);
+
+    // 2. Clear error for this field if function exists
+    if (clearErrors) clearErrors(name as keyof GuestInfoProps);
   };
 
   const handleProfileSwitch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUseProfileInfo(!useProfileInfo);
     const checked = e.target.checked;
     setState((prev: any) => ({ ...prev, jason: checked }));
-    handleChange(e);
+
+    // We don't call handleChange(e) here because the switch event
+    // doesn't carry the form data values we need.
+    // Instead, we fetch profile data directly.
 
     const userInfo = JSON.parse(localStorage.getItem("persist:root") || "{}");
+    // specific parsing logic...
     const profileStr = userInfo.profile || "{}";
 
     type Profile = {
@@ -56,6 +66,7 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
       email: string;
       mobile_number: string;
     };
+
     let profile: Profile = {
       first_name: "",
       last_name: "",
@@ -63,38 +74,41 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
       email: "",
       mobile_number: "",
     };
+
     try {
-      profile = JSON.parse(profileStr).profile;
+      if (typeof profileStr === "string") {
+        profile = JSON.parse(profileStr);
+      } else {
+        profile = profileStr; // handle case where it's already an object
+      }
     } catch {
       // keep defaults
     }
+
     if (checked) {
       onGuestInfoChange({
+        ...formData, // Keep existing fields if needed, or overwrite completely
         firstName: profile?.first_name || "",
         lastName: profile?.last_name || "",
         dateOfBirth: profile?.date_of_birth || "",
         email: profile?.email || "",
         phone: profile?.mobile_number || "",
-        countryCode: "",
-        postal: "",
-        address: "",
-        city: "",
       });
     } else {
+      // Optional: Clear fields when unchecked, or leave them as is
       onGuestInfoChange({
+        ...formData,
         firstName: "",
         lastName: "",
         dateOfBirth: "",
         email: "",
         phone: "",
-        countryCode: "",
-        postal: "",
-        address: "",
-        city: "",
       });
     }
   };
-  const handleSubmit = () => {
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     console.log("submitted");
   };
 
@@ -108,19 +122,6 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
         />
       )}
       <div className="w-full">
-        {/* Notification */}
-        {/* <div className="bg-blue-100 border border-[#023E8A] px-4 py-3 rounded-lg flex flex-row items-start sm:items-center gap-3 w-full">
-          <div className="pt-1">
-            <FaExclamationCircle className="text-[#023E8A] text-lg mt-4 sm:mt-0 sm:text-xl" />
-          </div>
-          <p className="text-sm sm:text-base text-gray-800 leading-relaxed">
-            Guests checking into hotel rooms must be 21 or older and should
-            present a valid photo ID card.
-          </p>
-        </div> */}
-
-        {/* <hr className="border-gray-300" /> */}
-
         {/* Profile Info Toggle */}
         <div className="flex justify-between items-center">
           <div className="flex-1 py-4">
@@ -190,7 +191,6 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                   name="lastName"
                   className="w-full outline-none bg-transparent placeholder:text-xs"
                   value={formData.lastName}
-                  // error={!!errors.phone && submitted}
                   onChange={handleChange}
                   required
                 />
@@ -200,29 +200,15 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
               )}
             </div>
 
-            {/* Date of Birth (Full Width) */}
-            <div className="flex flex-col gap-2">
-              <p className="font-semibold text-base">Date of Birth</p>
-              <div
-                className={`flex items-center border  ${
-                  errors.dateOfBirth ? `border-red-600` : `border-gray-300`
-                }  p-2 rounded-lg col-span-1 md:col-span-2`}
-              >
-                <FaCalendarAlt className="text-gray-500 mr-2" />
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  className="w-full outline-none bg-transparent "
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              {errors.dateOfBirth && (
-                <p className="text-red-600">{errors.dateOfBirth}</p>
-              )}
-            </div>
+            {/* Date of Birth (Using the new Component) */}
+            <DateOfBirthPicker
+              formData={formData}
+              errors={errors}
+              setFormData={onGuestInfoChange}
+              {...(clearErrors ? { clearErrors } : {})}
+            />
           </div>
+
           <div className="mt-5">
             <h5 className="py-4 font-bold text-lg">Contact Details</h5>
 
@@ -244,11 +230,12 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                     name="email"
                     onChange={handleChange}
                     required
-                    pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" // Email pattern validation
+                    pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                   />
                 </div>
                 {errors.email && <p className="text-red-600">{errors.email}</p>}
               </div>
+
               {/* Country Code  */}
               <div className="flex flex-col gap-2">
                 <p className="font-semibold text-base">Country Code</p>
@@ -259,12 +246,12 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                 >
                   <input
                     type="text"
-                    placeholder="Select Country Code"
+                    placeholder="Select"
                     className="w-full outline-none bg-transparent cursor-pointer"
                     value={formData.countryCode}
                     name="countryCode"
                     onChange={handleChange}
-                    onFocus={() => setModal(true)}
+                    onClick={() => setModal(true)} // changed onFocus to onClick for better mobile exp
                     required
                     readOnly
                   />
@@ -274,6 +261,7 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                   <p className="text-red-600">{errors.countryCode}</p>
                 )}
               </div>
+
               {/* Phone Number */}
               <div className="flex flex-col gap-2">
                 <p className="font-semibold text-base">Phone Number</p>
@@ -291,23 +279,24 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                     name="phone"
                     onChange={handleChange}
                     required
-                    pattern="^\+?[0-9]{10,15}$" // Phone number pattern validation (basic)
+                    pattern="^\+?[0-9]{10,15}$"
                   />
                 </div>
                 {errors.phone && <p className="text-red-600">{errors.phone}</p>}
               </div>
             </div>
           </div>
+
           <div className="mt-5">
             <h5 className="py-4 font-bold text-lg">Address Details</h5>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 border-[1px] border-gray-300 rounded-lg p-6">
               {/* Residential Address */}
               <div className="flex flex-col gap-2  lg:col-span-2">
-                <p className="font-semibold text-base">Resedential Address</p>
+                <p className="font-semibold text-base">Residential Address</p>
                 <div
                   className={`flex items-center border  ${
-                    errors.email ? `border-red-600` : `border-gray-300`
+                    errors.address ? `border-red-600` : `border-gray-300`
                   }  p-2 rounded-lg`}
                 >
                   <MdLocationOn className="text-gray-500 mr-2" />
@@ -321,16 +310,17 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                     required
                   />
                 </div>
-                {errors.postal && (
+                {errors.address && (
                   <p className="text-red-600">{errors.address}</p>
                 )}
               </div>
+
               {/* City  */}
               <div className="flex flex-col gap-2">
                 <p className="font-semibold text-base">City</p>
                 <div
                   className={`flex items-center border  ${
-                    errors.email ? `border-red-600` : `border-gray-300`
+                    errors.city ? `border-red-600` : `border-gray-300`
                   }  p-2 rounded-lg`}
                 >
                   <FaCity className="text-gray-500 mr-2" />
@@ -344,9 +334,7 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                     required
                   />
                 </div>
-                {errors.city && (
-                  <p className="text-red-600">{errors.city}</p>
-                )}
+                {errors.city && <p className="text-red-600">{errors.city}</p>}
               </div>
 
               {/* Postal Code*/}
@@ -354,7 +342,7 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                 <p className="font-semibold text-base">Postal Code</p>
                 <div
                   className={`flex items-center border  ${
-                    errors.phone ? `border-red-600` : `border-gray-300`
+                    errors.postal ? `border-red-600` : `border-gray-300`
                   }  p-2 rounded-lg`}
                 >
                   <PiSignpostFill className="text-gray-500 mr-2" />
@@ -366,7 +354,6 @@ const GuestInformation: React.FC<GuestInformationProps> = ({
                     name="postal"
                     onChange={handleChange}
                     required
-                    pattern="^\+?[0-9]{10,15}$" // Phone number pattern validation (basic)
                   />
                 </div>
                 {errors.postal && (
