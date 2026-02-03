@@ -21,7 +21,7 @@ import {
   fetchAllBookings,
 } from "../features/stays/api";
 import { getAccessToken } from "../api/services/authUtils";
-import ConfirmCancel from "./BookingsDetails/transfers/ConfirmCancel";
+
 
 export interface NormalizedBooking {
   id: string;
