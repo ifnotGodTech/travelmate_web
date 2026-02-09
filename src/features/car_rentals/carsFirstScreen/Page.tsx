@@ -1,11 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { TextField, InputAdornment } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "../../../store";
-import { setCarInfo } from "../carPaymentSlice";
-import { setSearchResults } from "../carPaymentSlice";
 
 // Icons
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -14,7 +10,6 @@ import { Info } from "lucide-react";
 
 // Custom hooks and utilities
 import { useBookingForm } from "../hooks/useBookingForm";
-import { useFormPersistence } from "../hooks/useFormPersistence";
 import { useModalState } from "../hooks/useModalState";
 
 import {
@@ -37,17 +32,18 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { validateBookingForm } from "../utilities/validation";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../../../store";
+import { setCarInfo} from "../carPaymentSlice";
 
 const CarBookingFirstScreen: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const carInfo = useSelector((state: RootState) => state.cars.carInfo);
-
   const collectTo = (
     data: string,
     data2: string,
     latitude: number,
-    longitude: number
+    longitude: number,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -57,21 +53,11 @@ const CarBookingFirstScreen: React.FC = () => {
       toLon: longitude,
     }));
   };
-  // Initialize form with Redux data or saved data
-  // const { loadSavedData } = useFormPersistence({} as BookingFormData);
 
   const initialData = useMemo(() => {
-    const savedData = localStorage.getItem("carBookingForm");
-    const persistedData = savedData ? JSON.parse(savedData) : null;
 
-    let baseData: Partial<BookingFormData>;
-    if (persistedData && Object.keys(persistedData).length > 0) {
-      baseData = persistedData;
-    } else if (carInfo && carInfo.pickupLocation) {
-      baseData = carInfo;
-    } else {
-      baseData = {};
-    }
+
+    let baseData: Partial<BookingFormData> = {};
 
     const safePickupDate = baseData.pickupDate
       ? dayjs(baseData.pickupDate).format("YYYY-MM-DD")
@@ -111,31 +97,11 @@ const CarBookingFirstScreen: React.FC = () => {
     setSubmitError,
   } = useBookingForm(initialData);
 
-  useFormPersistence(formData);
   // Modal management
   const { modals, openModal, closeModal } = useModalState();
 
   // Location picker state
   const [pickOrDrop, setPickOrDrop] = useState<"pick" | "drop">("pick");
-
-  useEffect(() => {
-    const reduxData = {
-      pickupLocation: formData.pickupLocation,
-      pickupLocaDescription: formData.pickupLocaDescription,
-      dropoffLocation: formData.dropoffLocation,
-      dropoffLocaDescription: formData.dropoffLocaDescription,
-      pickupDate: formData.pickupDate,
-      pickupTime: formData.pickupTime,
-      selectedRide: formData.selectedRide,
-      priceRange: formData.priceRange,
-      passengerCounts: formData.passengerCounts,
-      toLat: formData.toLat,
-      toLon: formData.toLon,
-      searchResults: carInfo?.searchResults || [],
-    };
-
-    dispatch(setCarInfo(reduxData));
-  }, [formData, dispatch, carInfo?.searchResults]);
 
   // Event handlers
   const handleDropLocationClick = useCallback(
@@ -143,14 +109,14 @@ const CarBookingFirstScreen: React.FC = () => {
       setPickOrDrop(type);
       openModal("searchDropLocation");
     },
-    [openModal]
+    [openModal],
   );
   const handlePickLocationClick = useCallback(
     (type: "pick") => {
       setPickOrDrop(type);
       openModal("searchPickLocation");
     },
-    [openModal]
+    [openModal],
   );
 
   const handleRideClick = () => {
@@ -164,14 +130,14 @@ const CarBookingFirstScreen: React.FC = () => {
         updateField("dropoffLocation", location);
       }
     },
-    [pickOrDrop, updateField, closeModal]
+    [pickOrDrop, updateField, closeModal],
   );
 
   const handleTimeChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       updateField("pickupTime", event.target.value);
     },
-    [updateField]
+    [updateField],
   );
 
   const handlePriceSubmit = useCallback(
@@ -179,7 +145,7 @@ const CarBookingFirstScreen: React.FC = () => {
       updateField("priceRange", { min, max });
       closeModal("priceRange");
     },
-    [updateField, openModal, closeModal]
+    [updateField, openModal, closeModal],
   );
 
   const handlePassengerUpdate = useCallback(
@@ -187,7 +153,7 @@ const CarBookingFirstScreen: React.FC = () => {
       updateField("passengerCounts", newCounts);
       closeModal("passengers");
     },
-    [updateField, closeModal]
+    [updateField, closeModal],
   );
 
   const handleRideSelect = useCallback(
@@ -195,7 +161,7 @@ const CarBookingFirstScreen: React.FC = () => {
       updateField("selectedRide", ride);
       closeModal("rideType");
     },
-    [updateField, closeModal]
+    [updateField, closeModal],
   );
   const handleSearch = useCallback(async () => {
     setTouched({
@@ -220,36 +186,45 @@ const CarBookingFirstScreen: React.FC = () => {
     setSubmitError(null);
     try {
       setLoading(true);
-      const params = transferService.convertFormToApiParams({
-        ...formData,
-      });
-      if (!params.fcode || !/^[A-Z]{3}$/.test(params.fcode)) {
-        throw new Error("Invalid pickup location code");
-      }
-      if (!params.tcode || params.tcode === "undefined,undefined") {
-        setFormData((prev) => ({ ...prev, dropoffLocaDescription: "" }));
-        throw new Error(
-          "Invalid destination coordinates, enter drop off location again"
-        );
-      }
-      const result = await transferService.searchTransfers(params);
-      if (!result?.data?.results?.services) {
-        throw new Error(result.error || "No transfer results found");
-      }
-
-      dispatch(setSearchResults(result?.data?.results?.services || []));
-      console.log("Search results:", result?.data);
-      navigate(
+         dispatch(setCarInfo({
+        pickupLocation: formData.pickupLocation,
+        pickupLocaDescription: formData.pickupLocaDescription,
+        dropoffLocation: formData.dropoffLocation,
+        dropoffLocaDescription: formData.dropoffLocaDescription,
+        pickupDate: formData.pickupDate,
+        pickupTime: formData.pickupTime,
+        selectedRide: formData.selectedRide,
+        priceRange: formData.priceRange,
+        passengerCounts: formData.passengerCounts,
+        toLat: formData.toLat,
+        toLon: formData.toLon,
+        searchResults: [], // Will be populated on next page
+      }));
+        navigate(
         `/cars-searchResults?ride=${encodeURIComponent(
-          formData.selectedRide
+          formData.selectedRide,
         )}&from=${formData.pickupLocaDescription}&to=${
           formData.dropoffLocaDescription
         }&time=${formData.pickupDate}&pricerange=${formData.priceRange}`,
-        { state: { search_id: result.data.search_id } }
+        // { state: { search_id: result?.data?.search_id } },
       );
-    } catch (error) {
+      
+     
+     
+    } catch (error:any) {
+      let message = "Search failed";
+
+      // Check for 404 Status Code
+      if (error?.response?.status === 404) {
+        message = "Something went wrong";
+      }else if (error?.response?.status === 400) {
+        // This is what you are currently hitting
+        message = "Invalid search parameters. Please check your locations.";
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
       setSubmitError(error instanceof Error ? error.message : "Search failed");
-      toast.error(error instanceof Error ? error.message : "Search failed");
+      toast.error(message);
       console.error("Search failed:", error);
     } finally {
       setLoading(false);
@@ -270,7 +245,7 @@ const CarBookingFirstScreen: React.FC = () => {
       priceRange: formatPriceRange(formData.priceRange),
       rideType: formData.selectedRide || "Select Ride Type",
     }),
-    [formData]
+    [formData],
   );
 
   return (

@@ -6,11 +6,12 @@ import {
   TextField,
 } from "@mui/material";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import DateRangeOutlinedIcon from "@mui/icons-material/DateRangeOutlined";
+// import DateRangeOutlinedIcon from "@mui/icons-material/DateRangeOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { FiPhone } from "react-icons/fi";
 import { DeskProps } from "../Page";
 import { FaCaretDown } from "react-icons/fa";
+import DateOfBirthPicker from "./DateOfBirthPicker";
 
 type props = { setCountryModal: (data: boolean) => void };
 type PersonalInfoProps = props & DeskProps;
@@ -189,7 +190,7 @@ const PersonalInfo = ({
                         }}
                       />
                     </div>
-                    <div className="flex flex-col col-span-full">
+                    {/* <div className="flex flex-col col-span-full">
                       <label
                         htmlFor="dateOfBirth"
                         className="mb-1 text-[16px] text-start font-medium"
@@ -222,7 +223,16 @@ const PersonalInfo = ({
                           },
                         }}
                       />
-                    </div>
+                    </div> */}
+                    <DateOfBirthPicker
+                      formData={passFormData}
+                      setFormData={(newData) => {
+                        // This updates your existing state object
+                        setPassFormData(newData);
+                      }}
+                      errors={errors}
+                      // Optional: clearErrors={(field) => handleClearErrors(field)}
+                    />
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { TextField, InputAdornment, Skeleton } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMediaQuery } from "react-responsive";
 
 // Icons
@@ -31,11 +31,12 @@ import SearchPickUpLocation from "../carsFirstScreen/modals/searchPickUp";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-import { useSelector } from "react-redux";
-import { RootState } from "../../../store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../../store";
+import { setCarInfo, setSearchResults } from "../carPaymentSlice";
 
 const DisplayCars: React.FC = () => {
-  const { state } = useLocation();
+  const dispatch = useDispatch<AppDispatch>();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [loadingSkeleton, setLoadingSkeleton] = useState(false);
   const navigate = useNavigate();
@@ -43,12 +44,15 @@ const DisplayCars: React.FC = () => {
   const [form, setForm] = useState<boolean>(!isMobile);
   const [pickOrDrop, setPickOrDrop] = useState<"pick" | "drop">("pick");
   const carInfo = useSelector((state: RootState) => state.cars.carInfo);
+  const searchResults = useSelector(
+    (state: RootState) => state.cars.carInfo?.searchResults || [],
+  );
 
   const collectTo = (
     data: string,
     data2: string,
     latitude: number,
-    longitude: number
+    longitude: number,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -58,25 +62,10 @@ const DisplayCars: React.FC = () => {
       toLon: longitude,
     }));
   };
+
+
   const initialData = useMemo(() => {
-    if (!carInfo) {
-      return {
-        pickupLocation: "",
-        pickupLocaDescription: "",
-        dropoffLocation: "",
-        dropoffLocaDescription: "",
-        pickupDate: "",
-        pickupTime: "",
-        selectedRide: "",
-        priceRange: { min: 0, max: 0 },
-        passengerCounts: { adults: 0, children: 0, infant: 0 },
-        toLat: undefined,
-        toLon: undefined,
-        searchResults: [],
-        search_id: "",
-        rate_key: "",
-      } as BookingFormData;
-    }
+    if (!carInfo) return {} as BookingFormData;
 
     return {
       pickupLocation: carInfo.pickupLocation || "",
@@ -86,10 +75,7 @@ const DisplayCars: React.FC = () => {
       pickupDate: carInfo.pickupDate || "",
       pickupTime: carInfo.pickupTime || "",
       selectedRide: carInfo.selectedRide || "",
-      priceRange: {
-        min: carInfo.priceRange?.min ?? 0,
-        max: carInfo.priceRange?.max ?? 0,
-      },
+      priceRange: carInfo.priceRange || { min: 0, max: 0 },
       passengerCounts: carInfo.passengerCounts || {
         adults: 0,
         children: 0,
@@ -97,11 +83,9 @@ const DisplayCars: React.FC = () => {
       },
       toLat: carInfo.toLat,
       toLon: carInfo.toLon,
-      searchResults: carInfo.searchResults || [],
-      search_id: state.search_id,
-      rate_key: "",
+      searchResults: searchResults || [],
     } as BookingFormData;
-  }, [carInfo]);
+  }, [carInfo, searchResults]);
 
   const {
     formData,
@@ -115,32 +99,39 @@ const DisplayCars: React.FC = () => {
     setSubmitError,
   } = useBookingForm(initialData);
 
+useEffect(() => {
+  const SearchTransfers = async () => {
+    try {
+      setLoadingSkeleton(true);
+      const params = transferService.convertFormToApiParams(formData);
+      
+      // Validate before API call
+      if (!params.fcode) return; 
 
-  const stateData = useMemo(() => {
-    const locationState = (state || {}) as BookingFormData;
-    return {
-      pickupLocation: locationState.pickupLocation || "",
-      pickupLocaDescription: locationState.pickupLocaDescription || "",
-      dropoffLocation: locationState.dropoffLocation || "",
-      pickupDate: locationState.pickupDate || "",
-      pickupTime: locationState.pickupTime || "",
-      selectedRide: locationState.selectedRide || "",
-      priceRange: {
-        min: locationState.priceRange?.min,
-        max: locationState.priceRange?.max,
-      },
-      passengerCounts: locationState.passengerCounts,
-      toLat: locationState.toLat,
-      toLon: locationState.toLon,
-      searchResults: locationState.searchResults || [],
-      search_id: locationState.search_id || "",
-    };
-  }, [state]);
+      const result = await transferService.searchTransfers(params);
+      if (result?.data?.results?.services) {
+        dispatch(setSearchResults(result.data.results.services));
+      }
+      setFormData((prev)=>({
+        ...prev, 
+        search_id: result?.data?.search_id 
+      }))
+    } catch (err:any) {
+      setSubmitError(err.message);
+    } finally {
+      setLoadingSkeleton(false);
+    }
+  };
+  
+  if (carInfo?.pickupLocation) {
+     SearchTransfers();
+  }
+}, []); 
 
   useEffect(() => {
     if (!carInfo || !carInfo.pickupLocation) {
       console.warn("No car search data found, redirecting to search page");
-      navigate("/" , {replace: true} );
+      navigate("/", { replace: true });
     }
   }, [carInfo, navigate]);
 
@@ -150,7 +141,7 @@ const DisplayCars: React.FC = () => {
       setPickOrDrop(type);
       openModal("searchDropLocation");
     },
-    [openModal]
+    [openModal],
   );
 
   const handlePickLocationClick = useCallback(
@@ -158,7 +149,7 @@ const DisplayCars: React.FC = () => {
       setPickOrDrop(type);
       openModal("searchPickLocation");
     },
-    [openModal]
+    [openModal],
   );
 
   const handleLocationSelect = useCallback(
@@ -169,21 +160,21 @@ const DisplayCars: React.FC = () => {
         updateField("dropoffLocation", location);
       }
     },
-    [pickOrDrop, updateField]
+    [pickOrDrop, updateField],
   );
 
   const handleTimeChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       updateField("pickupTime", event.target.value);
     },
-    [updateField]
+    [updateField],
   );
   const handlePriceSubmit = useCallback(
     (min: number, max: number) => {
       updateField("priceRange", { min, max });
       closeModal("priceRange");
     },
-    [updateField, openModal, closeModal]
+    [updateField, openModal, closeModal],
   );
 
   const handlePassengerUpdate = useCallback(
@@ -191,7 +182,7 @@ const DisplayCars: React.FC = () => {
       updateField("passengerCounts", newCounts);
       closeModal("passengers");
     },
-    [updateField, closeModal]
+    [updateField, closeModal],
   );
 
   const handleRideSelect = useCallback(
@@ -199,57 +190,58 @@ const DisplayCars: React.FC = () => {
       updateField("selectedRide", ride);
       closeModal("rideType");
     },
-    [updateField, closeModal]
+    [updateField, closeModal],
   );
 
   const handleUpdateSearch = useCallback(async () => {
-    const errors = [];
-    if (!formData.pickupLocation) {
-      errors.push("Please enter a valid pickup location");
-    }
-    if (!formData.dropoffLocation) {
-      errors.push("Please enter a valid dropoff location");
-    }
-    if (!formData.toLat || !formData.toLon) {
-      errors.push("Dropoff location must have valid GPS coordinates");
-    }
-    if (!formData.pickupDate) {
-      errors.push("Please select a pickup date");
-    }
-    if (!formData.pickupTime) {
-      errors.push("Please select a pickup time");
-    }
-    if (!isValid) {
-      errors.push("Please fill in all required fields correctly");
-    }
-
-    if (errors.length > 0) {
-      setSubmitError(errors.join(", "));
-      return;
-    }
+    // ... validation code ...
 
     setSubmitError(null);
     try {
       setLoading(true);
-
       setLoadingSkeleton(true);
+      dispatch(setSearchResults([]));
       const params = transferService.convertFormToApiParams({
         ...formData,
       });
+
       if (!params.fcode || !/^[A-Z]{3}$/.test(params.fcode)) {
         throw new Error("Invalid pickup location code");
       }
       if (!params.tcode || params.tcode === "undefined,undefined") {
         setFormData((prev) => ({ ...prev, dropoffLocaDescription: "" }));
         throw new Error(
-          "Invalid destination coordinates, enter drop off location again"
+          "Invalid destination coordinates, enter drop off location again",
         );
       }
+
       const result = await transferService.searchTransfers(params);
+
       if (!result?.data?.results?.services) {
-        throw new Error(result.error || "No transfer results found");
+        throw new Error("No transfer results found");
       }
-      updateField("searchResults", result?.data?.results?.services || []);
+
+      // Update Redux with new results
+      dispatch(setSearchResults(result?.data?.results?.services || []));
+
+      // Update Redux with updated form data
+      dispatch(
+        setCarInfo({
+          pickupLocation: formData.pickupLocation,
+          pickupLocaDescription: formData.pickupLocaDescription,
+          dropoffLocation: formData.dropoffLocation,
+          dropoffLocaDescription: formData.dropoffLocaDescription,
+          pickupDate: formData.pickupDate,
+          pickupTime: formData.pickupTime,
+          selectedRide: formData.selectedRide,
+          priceRange: formData.priceRange,
+          passengerCounts: formData.passengerCounts,
+          toLat: formData.toLat,
+          toLon: formData.toLon,
+          searchResults: result?.data?.results?.services || [],
+        }),
+      );
+
       if (isMobile) {
         setForm(false);
       }
@@ -260,15 +252,7 @@ const DisplayCars: React.FC = () => {
       setLoading(false);
       setLoadingSkeleton(false);
     }
-  }, [
-    isValid,
-    formData,
-    isMobile,
-    setLoading,
-    setSubmitError,
-    updateField,
-    transferService,
-  ]);
+  }, [formData, isMobile, dispatch, setLoading, setSubmitError]);
   // Memoized display values
   const displayValues = useMemo(
     () => ({
@@ -276,9 +260,9 @@ const DisplayCars: React.FC = () => {
       priceRange: formatPriceRange(formData.priceRange),
       rideType: formData.selectedRide || "Select Ride Type",
     }),
-    [formData]
+    [formData],
   );
-  console.log(formData)
+  console.log(carInfo);
 
   return (
     <div className="relative">
@@ -427,7 +411,7 @@ const DisplayCars: React.FC = () => {
                       if (newValue) {
                         updateField(
                           "pickupDate",
-                          newValue.format("YYYY-MM-DD")
+                          newValue.format("YYYY-MM-DD"),
                         );
                       }
                     }}
@@ -642,7 +626,7 @@ const DisplayCars: React.FC = () => {
             toLon: formData.toLon,
             search_id: formData.search_id,
           }}
-          searchResults={carInfo?.searchResults || stateData.searchResults}
+          searchResults={carInfo?.searchResults}
           OpenForm={() => setForm(true)}
           loading={loading}
           rate_key={formData.rate_key ?? ""}

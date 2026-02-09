@@ -124,6 +124,7 @@ class TransferService {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Search failed',
+                
             };
         }
     }
